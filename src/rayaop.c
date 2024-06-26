@@ -7,10 +7,12 @@
 #include "php_ini.h"
 #include "ext/standard/info.h"
 #include "zend_exceptions.h"
-// @link https://www.phpinternalsbook.com/php7/extensions_design/php_functions.html
 #include "zend_interfaces.h"
 // エクステンション固有のヘッダーファイルをインクルード
 #include "php_rayaop.h"
+
+// エクステンションのバージョンを定義
+#define PHP_RAYAOP_VERSION "1.0.0"
 
 // オリジナルのzend_execute_ex関数へのポインタ
 static void (*original_zend_execute_ex)(zend_execute_data *execute_data);
@@ -19,48 +21,36 @@ static void (*original_zend_execute_ex)(zend_execute_data *execute_data);
 static void rayaop_zend_execute_ex(zend_execute_data *execute_data)
 {
     // 現在実行中の関数情報を取得
-    // @link https://www.phpinternalsbook.com/php7/internal_types/zend_execute_data.html
     zend_function *current_function = execute_data->func;
 
-    // デバッグ情報を出力
-    php_printf("Debug: Executing function\n");
+    // メソッド名を取得
+    const char *method_name = current_function->common.function_name
+        ? ZSTR_VAL(current_function->common.function_name)
+        : "unknown";
 
-    // クラスメソッドの場合
-    if (current_function->common.scope && current_function->common.function_name) {
-        const char *class_name = ZSTR_VAL(current_function->common.scope->name);
-        const char *method_name = ZSTR_VAL(current_function->common.function_name);
-
-        // インターセプトメッセージを出力
-        php_printf("Intercepted: %s::%s\n", class_name, method_name);
-    }
-    // グローバル関数の場合
-    else if (current_function->common.function_name) {
-        php_printf("Debug: Global function: %s\n", ZSTR_VAL(current_function->common.function_name));
-    }
-    // その他の場合（匿名関数など）
-    else {
-        php_printf("Debug: Unknown function type\n");
-    }
+    // "Hello {method_name}" メッセージを出力
+    php_printf("Hello %s\n", method_name);
 
     // オリジナルのzend_execute_ex関数を呼び出し
     original_zend_execute_ex(execute_data);
 }
 
-// デバッグ用の関数を追加
+/* {{{ proto boolean rayaop_debug()
+   Debug function for Ray.Aop */
 PHP_FUNCTION(rayaop_debug)
 {
     php_printf("Ray.Aop debug function called\n");
     RETURN_TRUE;
 }
+/* }}} */
 
 // モジュール初期化時に呼ばれる関数
-// @link https://www.phpinternalsbook.com/php7/extensions_design/php_lifecycle.html
 PHP_MINIT_FUNCTION(rayaop)
 {
     // オリジナルのzend_execute_exを保存し、新しい関数に置き換え
     original_zend_execute_ex = zend_execute_ex;
     zend_execute_ex = rayaop_zend_execute_ex;
-    php_printf("Debug: Ray.Aop extension initialized\n");
+    php_printf("Ray.Aop extension initialized\n");
     return SUCCESS;
 }
 
@@ -81,29 +71,31 @@ PHP_MINFO_FUNCTION(rayaop)
     php_info_print_table_end();
 }
 
-ZEND_BEGIN_ARG_INFO(arginfo_rayaop_debug, 0)
+// rayaop_debug関数の引数情報を定義
+ZEND_BEGIN_ARG_INFO_EX(arginfo_rayaop_debug, 0, 0, 0)
 ZEND_END_ARG_INFO()
 
 // エクステンションの関数エントリーを定義
-const zend_function_entry rayaop_functions[] = {
-    PHP_FE(rayaop_debug, NULL)  // デバッグ関数を追加
+static const zend_function_entry rayaop_functions[] = {
+    PHP_FE(rayaop_debug, arginfo_rayaop_debug)
     PHP_FE_END  // 関数エントリーの終了を示す
 };
 
 // エクステンションのエントリーポイントを定義
 zend_module_entry rayaop_module_entry = {
     STANDARD_MODULE_HEADER,
-    "rayaop",
-    rayaop_functions,
-    PHP_MINIT(rayaop),      // 初期化関数
-    PHP_MSHUTDOWN(rayaop),  // 終了関数
-    NULL,
-    NULL,
-    PHP_MINFO(rayaop),
-    PHP_RAYAOP_VERSION,
+    "rayaop",                // エクステンション名
+    rayaop_functions,        // 関数エントリー
+    PHP_MINIT(rayaop),       // モジュール初期化関数
+    PHP_MSHUTDOWN(rayaop),   // モジュール終了関数
+    NULL,                    // リクエスト開始時の関数（未使用）
+    NULL,                    // リクエスト終了時の関数（未使用）
+    PHP_MINFO(rayaop),       // モジュール情報関数
+    PHP_RAYAOP_VERSION,      // バージョン
     STANDARD_MODULE_PROPERTIES
 };
 
+// 動的にロード可能なモジュールとしてコンパイルされる場合
 #ifdef COMPILE_DL_RAYAOP
 ZEND_GET_MODULE(rayaop)
 #endif
