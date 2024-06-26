@@ -24,9 +24,14 @@ static void rayaop_zend_execute_ex(zend_execute_data *execute_data)
     // @link https://www.phpinternalsbook.com/php7/internal_types/zend_execute_data.html
     zend_function *current_function = execute_data->func;
 
-    if (current_function->common.function_name) {
-        // 関数名が存在する場合、メッセージを出力
-        php_printf("Hello %s\n", ZSTR_VAL(current_function->common.function_name));
+    // クラスメソッドの場合のみインターセプト
+    if (current_function->common.scope && current_function->common.function_name) {
+        // クラス名とメソッド名を取得
+        const char *class_name = ZSTR_VAL(current_function->common.scope->name);
+        const char *method_name = ZSTR_VAL(current_function->common.function_name);
+
+        // メッセージを出力
+        php_printf("Hello %s::%s\n", class_name, method_name);
     }
 
     // オリジナルの zend_execute_ex を呼び出し
