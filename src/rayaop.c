@@ -2,67 +2,116 @@
 #include "config.h"
 #endif
 
-// PHPの主要なヘッダーファイルをインクルード
 #include "php.h"
 #include "php_ini.h"
 #include "ext/standard/info.h"
 #include "zend_exceptions.h"
 #include "zend_interfaces.h"
-// エクステンション固有のヘッダーファイルをインクルード
 #include "php_rayaop.h"
 
-// エクステンションのバージョンを定義
-#define PHP_RAYAOP_VERSION "1.0.0"
+// インターセプト情報を保持する構造体
+typedef struct _intercept_info {
+    char *class_name;
+    char *method_name;
+    zval *handler;
+    struct _intercept_info *next;
+} intercept_info;
 
-// オリジナルのzend_execute_ex関数へのポインタ
+// インターセプト情報のリスト
+static intercept_info *intercept_list = NULL;
+
 static void (*original_zend_execute_ex)(zend_execute_data *execute_data);
 
 // 新しいzend_execute_ex関数の実装
 static void rayaop_zend_execute_ex(zend_execute_data *execute_data)
 {
-    // 現在実行中の関数情報を取得
     zend_function *current_function = execute_data->func;
 
-    // メソッド名を取得
-    const char *method_name = current_function->common.function_name
-        ? ZSTR_VAL(current_function->common.function_name)
-        : "unknown";
+    if (current_function->common.scope && current_function->common.function_name) {
+        const char *class_name = ZSTR_VAL(current_function->common.scope->name);
+        const char *method_name = ZSTR_VAL(current_function->common.function_name);
 
-    // "Hello {method_name}" メッセージを出力
-    php_printf("Hello %s\n", method_name);
+        // インターセプト情報を検索
+        intercept_info *info = intercept_list;
+        while (info) {
+            if (strcmp(info->class_name, class_name) == 0 && strcmp(info->method_name, method_name) == 0) {
+                zval retval, params[3];
 
-    // オリジナルのzend_execute_ex関数を呼び出し
+                ZVAL_OBJ(&params[0], execute_data->This.value.obj);
+                ZVAL_STRING(&params[1], method_name);
+
+                array_init(&params[2]);
+                uint32_t arg_count = ZEND_CALL_NUM_ARGS(execute_data);
+                zval *args = ZEND_CALL_ARG(execute_data, 1);
+                for (uint32_t i = 0; i < arg_count; i++) {
+                    zval *arg = &args[i];
+                    Z_TRY_ADDREF_P(arg);
+                    add_next_index_zval(&params[2], arg);
+                }
+
+                zval func_name;
+                ZVAL_STRING(&func_name, "intercept");
+                call_user_function(NULL, info->handler, &func_name, &retval, 3, params);
+                zval_ptr_dtor(&func_name);
+
+                zval_ptr_dtor(&params[1]);
+                zval_ptr_dtor(&params[2]);
+                zval_ptr_dtor(&retval);
+                break;
+            }
+            info = info->next;
+        }
+    }
+
     original_zend_execute_ex(execute_data);
 }
 
-/* {{{ proto boolean rayaop_debug()
-   Debug function for Ray.Aop */
-PHP_FUNCTION(rayaop_debug)
+PHP_FUNCTION(method_intercept)
 {
-    php_printf("Ray.Aop debug function called\n");
-    RETURN_TRUE;
-}
-/* }}} */
+    char *class_name, *method_name;
+    size_t class_name_len, method_name_len;
+    zval *intercepted;
 
-// モジュール初期化時に呼ばれる関数
+    ZEND_PARSE_PARAMETERS_START(3, 3)
+        Z_PARAM_STRING(class_name, class_name_len)
+        Z_PARAM_STRING(method_name, method_name_len)
+        Z_PARAM_OBJECT(intercepted)
+    ZEND_PARSE_PARAMETERS_END();
+
+    intercept_info *new_info = emalloc(sizeof(intercept_info));
+    new_info->class_name = estrndup(class_name, class_name_len);
+    new_info->method_name = estrndup(method_name, method_name_len);
+    new_info->handler = emalloc(sizeof(zval));
+    ZVAL_COPY(new_info->handler, intercepted);
+    new_info->next = intercept_list;
+    intercept_list = new_info;
+
+    RETURN_NULL();
+}
+
 PHP_MINIT_FUNCTION(rayaop)
 {
-    // オリジナルのzend_execute_exを保存し、新しい関数に置き換え
     original_zend_execute_ex = zend_execute_ex;
     zend_execute_ex = rayaop_zend_execute_ex;
-    php_printf("Ray.Aop extension initialized\n");
     return SUCCESS;
 }
 
-// モジュール終了時に呼ばれる関数
 PHP_MSHUTDOWN_FUNCTION(rayaop)
 {
-    // オリジナルのzend_execute_exを復元
     zend_execute_ex = original_zend_execute_ex;
+    // インターセプト情報のクリーンアップ
+    while (intercept_list) {
+        intercept_info *temp = intercept_list;
+        intercept_list = intercept_list->next;
+        efree(temp->class_name);
+        efree(temp->method_name);
+        zval_ptr_dtor(temp->handler);
+        efree(temp->handler);
+        efree(temp);
+    }
     return SUCCESS;
 }
 
-// phpinfo()関数で表示される情報を設定
 PHP_MINFO_FUNCTION(rayaop)
 {
     php_info_print_table_start();
@@ -71,31 +120,24 @@ PHP_MINFO_FUNCTION(rayaop)
     php_info_print_table_end();
 }
 
-// rayaop_debug関数の引数情報を定義
-ZEND_BEGIN_ARG_INFO_EX(arginfo_rayaop_debug, 0, 0, 0)
-ZEND_END_ARG_INFO()
-
-// エクステンションの関数エントリーを定義
 static const zend_function_entry rayaop_functions[] = {
-    PHP_FE(rayaop_debug, arginfo_rayaop_debug)
-    PHP_FE_END  // 関数エントリーの終了を示す
+    PHP_FE(method_intercept, NULL)
+    PHP_FE_END
 };
 
-// エクステンションのエントリーポイントを定義
 zend_module_entry rayaop_module_entry = {
     STANDARD_MODULE_HEADER,
-    "rayaop",                // エクステンション名
-    rayaop_functions,        // 関数エントリー
-    PHP_MINIT(rayaop),       // モジュール初期化関数
-    PHP_MSHUTDOWN(rayaop),   // モジュール終了関数
-    NULL,                    // リクエスト開始時の関数（未使用）
-    NULL,                    // リクエスト終了時の関数（未使用）
-    PHP_MINFO(rayaop),       // モジュール情報関数
-    PHP_RAYAOP_VERSION,      // バージョン
+    "rayaop",
+    rayaop_functions,
+    PHP_MINIT(rayaop),
+    PHP_MSHUTDOWN(rayaop),
+    NULL,
+    NULL,
+    PHP_MINFO(rayaop),
+    PHP_RAYAOP_VERSION,
     STANDARD_MODULE_PROPERTIES
 };
 
-// 動的にロード可能なモジュールとしてコンパイルされる場合
 #ifdef COMPILE_DL_RAYAOP
 ZEND_GET_MODULE(rayaop)
 #endif

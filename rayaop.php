@@ -1,40 +1,57 @@
 <?php
 
-// デバッグ関数が利用可能か確認
-if (function_exists('rayaop_debug')) {
-    rayaop_debug();
-} else {
-    echo "rayaop_debug function not available\n";
-}
-
-// グローバル関数（インターセプトされない）
-function sayHello($name) {
-    echo "sayHello($name) called\n";
-}
-
-// テスト用クラス
-class TestClass {
-    public function __construct() {
-        echo "TestClass constructed\n";
-    }
-
-    public function testMethod() {
-        echo "TestClass::testMethod() called\n";
-    }
-
-    public static function staticMethod() {
-        echo "TestClass::staticMethod() called\n";
+namespace Ray\Aop {
+    interface InterceptedInterface
+    {
+        public function intercept(object $object, string $method, array $params): mixed;
     }
 }
 
-// グローバル関数呼び出し（インターセプトされない）
-sayHello("World");
+namespace {
+    class Intercepted implements Ray\Aop\InterceptedInterface
+    {
+        public function intercept(object $object, string $method, array $params): mixed
+        {
+            echo "Intercepted: " . get_class($object) . "::{$method}\n";
+            echo "Arguments: " . json_encode($params) . "\n";
 
-// クラスのインスタンス化とメソッド呼び出し
-$test = new TestClass();
-$test->testMethod();
+            return call_user_func_array([$object, $method], $params);
+        }
+    }
 
-// 静的メソッド呼び出し
-TestClass::staticMethod();
+    $intercepted = new Intercepted();
+    method_intercept('TestClass', 'testMethod', $intercepted);
 
-echo "Script execution completed\n";
+    class TestClass
+    {
+        public function __construct()
+        {
+            echo "TestClass constructed\n";
+        }
+
+        public function testMethod($arg)
+        {
+            echo "TestClass::testMethod($arg) called\n";
+            return "Result: $arg";
+        }
+
+        public function nonInterceptedMethod($arg)
+        {
+            echo "TestClass::nonInterceptedMethod($arg) called\n";
+            return "Non-intercepted result: $arg";
+        }
+    }
+
+    echo "Creating TestClass instance\n";
+    $test = new TestClass();
+
+    echo "Calling testMethod (should be intercepted)\n";
+    $result1 = $test->testMethod("test");
+    echo "Result: $result1\n";
+
+    echo "Calling nonInterceptedMethod (should not be intercepted)\n";
+    $result2 = $test->nonInterceptedMethod("test");
+    echo "Result: $result2\n";
+
+    echo "Script execution completed\n";
+}
