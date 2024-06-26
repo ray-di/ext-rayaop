@@ -9,7 +9,7 @@ clean() {
 prepare() {
     echo "Preparing..."
     phpize
-    ./configure --enable-helloworld-advanced
+    ./configure --enable-rayaop-advanced
 }
 
 build() {
@@ -24,7 +24,7 @@ install() {
 
 run() {
     echo "Run..."
-    php -dextension=modules/helloworld.so -dhelloworld.greeting="konichiwa" helloworld.php
+    php -dextension=modules/rayaop.so -drayaop.greeting="konichiwa" rayaop.php
 }
 
 case $1 in

@@ -32,7 +32,7 @@ jobs:
       - name: Prepare build
         run: |
           phpize
-          ./configure --enable-helloworld-advanced
+          ./configure --enable-rayaop-advanced
           make
 
       - name: Run tests
@@ -40,5 +40,5 @@ jobs:
 
       - name: Run demo
         run: |
-          php -d extension=./modules/helloworld.so -i | grep hello
-          echo '<?php helloworld(); helloworld_advanced();' | php -d extension=./modules/helloworld.so -dhelloworld.greeting="konichiwa"
+          php -d extension=./modules/rayaop.so -i | grep rayaop
+          echo '<?php rayaop(); rayaop_advanced();' | php -d extension=./modules/rayaop.so -drayaop.greeting="konichiwa"

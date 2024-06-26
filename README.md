@@ -1,13 +1,13 @@
 # HelloWorld PHP Extension
 
-[![Build and Test PHP Extension](https://github.com/koriym/ext-helloworld/actions/workflows/build.yml/badge.svg)](https://github.com/koriym/ext-helloworld/actions/workflows/build.yml)
+[![Build and Test PHP Extension](https://github.com/koriym/ext-rayaop/actions/workflows/build.yml/badge.svg)](https://github.com/koriym/ext-rayaop/actions/workflows/build.yml)
 
 A simple PHP extension that demonstrates basic and advanced "Hello World" functionality.
 
 ## Features
 
-- Basic `helloworld()` function
-- Advanced `helloworld_advanced()` function with configurable greeting
+- Basic `rayaop()` function
+- Advanced `rayaop_advanced()` function with configurable greeting
 
 ## Run
 
@@ -17,22 +17,22 @@ A simple PHP extension that demonstrates basic and advanced "Hello World" functi
     // make clean
     // phpize --clean
     phpize
-    ./configure --enable-helloworld-advanced
+    ./configure --enable-rayaop-advanced
     make
     ```
 
 2. Run
 
     ```
-    % php -d extension=./modules/helloworld.so -i | grep hello
+    % php -d extension=./modules/rayaop.so -i | grep rayaop
 
-    helloworld
-    helloworld support => enabled
-    helloworld.greeting => Hello World! => Hello World!
+    rayaop
+    rayaop support => enabled
+    rayaop.greeting => Hello AOP! => Hello AOP!
 
-    % php -d extension=./modules/helloworld.so php/helloworld.php
-    Hello World!
-    Hello World!
+    % php -d extension=./modules/rayaop.so php/rayaop.php
+    Hello AOP!
+    Hello AOP!
    ```
 
 ## Usage
@@ -41,15 +41,15 @@ A simple PHP extension that demonstrates basic and advanced "Hello World" functi
 
 ```php
 <?php
-helloworld();
-// Output: Hello World!
+rayaop();
+// Output: Hello AOP!
 ```
 
 ### Advanced Function
 
 ```php
 <?php
-helloworld_advanced();
+rayaop_advanced();
 // Output: [Configurable greeting from php.ini]
 
 ```
@@ -57,7 +57,7 @@ helloworld_advanced();
 To configure the greeting, add the following to your php.ini:
 
 ```
-helloworld.greeting = "Your custom greeting!"
+rayaop.greeting = "Your custom greeting!"
 ```
 
 ## Build script
