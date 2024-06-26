@@ -77,8 +77,12 @@ PHP_MINFO_FUNCTION(rayaop)
 {
     php_info_print_table_start();
     php_info_print_table_header(2, "rayaop support", "enabled");
+    php_info_print_table_row(2, "Version", PHP_RAYAOP_VERSION);
     php_info_print_table_end();
 }
+
+ZEND_BEGIN_ARG_INFO(arginfo_rayaop_debug, 0)
+ZEND_END_ARG_INFO()
 
 // エクステンションの関数エントリーを定義
 const zend_function_entry rayaop_functions[] = {
@@ -100,7 +104,6 @@ zend_module_entry rayaop_module_entry = {
     STANDARD_MODULE_PROPERTIES
 };
 
-// 動的にロード可能なモジュールとしてコンパイルされる場合
 #ifdef COMPILE_DL_RAYAOP
 ZEND_GET_MODULE(rayaop)
 #endif
