@@ -2,11 +2,8 @@ name: Build and Test PHP Extension
 
 on:
   push:
-    branches:
-      - main
   pull_request:
-    branches:
-      - main
+  workflow_dispatch:
 
 jobs:
   build:
@@ -32,7 +29,7 @@ jobs:
       - name: Prepare build
         run: |
           phpize
-          ./configure --enable-rayaop-advanced
+          ./configure
           make
 
       - name: Run tests
@@ -41,4 +38,4 @@ jobs:
       - name: Run demo
         run: |
           php -d extension=./modules/rayaop.so -i | grep rayaop
-          echo '<?php rayaop(); rayaop_advanced();' | php -d extension=./modules/rayaop.so -drayaop.greeting="konichiwa"
+          php -d extension=./modules/rayaop.so rayphp.php

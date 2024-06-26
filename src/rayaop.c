@@ -12,7 +12,7 @@
 typedef struct _intercept_info {
     char *class_name;
     char *method_name;
-    zval *handler;
+    zval handler;
     struct _intercept_info *next;
 } intercept_info;
 
@@ -38,6 +38,11 @@ static void rayaop_zend_execute_ex(zend_execute_data *execute_data)
             if (strcmp(info->class_name, class_name) == 0 && strcmp(info->method_name, method_name) == 0) {
                 zval retval, params[3];
 
+                if (execute_data->This.value.obj == NULL) {
+                    original_zend_execute_ex(execute_data);
+                    return;
+                }
+
                 ZVAL_OBJ(&params[0], execute_data->This.value.obj);
                 ZVAL_STRING(&params[1], method_name);
 
@@ -53,7 +58,7 @@ static void rayaop_zend_execute_ex(zend_execute_data *execute_data)
                 is_intercepting = 1;  // インターセプト中フラグをセット
                 zval func_name;
                 ZVAL_STRING(&func_name, "intercept");
-                call_user_function(NULL, info->handler, &func_name, &retval, 3, params);
+                call_user_function(NULL, &info->handler, &func_name, &retval, 3, params);
                 zval_ptr_dtor(&func_name);
                 is_intercepting = 0;  // インターセプト中フラグをリセット
 
@@ -92,8 +97,7 @@ PHP_FUNCTION(method_intercept)
     intercept_info *new_info = emalloc(sizeof(intercept_info));
     new_info->class_name = estrndup(class_name, class_name_len);
     new_info->method_name = estrndup(method_name, method_name_len);
-    new_info->handler = emalloc(sizeof(zval));
-    ZVAL_COPY(new_info->handler, intercepted);
+    ZVAL_COPY(&new_info->handler, intercepted);
     new_info->next = intercept_list;
     intercept_list = new_info;
 
@@ -115,8 +119,7 @@ PHP_MSHUTDOWN_FUNCTION(rayaop)
         intercept_list = intercept_list->next;
         efree(temp->class_name);
         efree(temp->method_name);
-        zval_ptr_dtor(temp->handler);
-        efree(temp->handler);
+        zval_ptr_dtor(&temp->handler);
         efree(temp);
     }
     return SUCCESS;

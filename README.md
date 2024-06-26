@@ -18,21 +18,30 @@ A PHP extension that provides Aspect-Oriented Programming (AOP) functionality fo
 ## Installation
 
 2.Compile the extension:
-   ```
-   phpize
-   ./configure
-   make
-   ```
+
+```
+phpize
+./configure
+make
+```
 
 3. Install the extension:
-   ```
-   sudo make install
-   ```
+
+```
+sudo make install
+```
 
 4. Add the following line to your php.ini file:
-   ```
-   extension=rayaop.so
-   ```
+
+```
+extension=rayaop.so
+```
+
+## About this Extension
+
+This PECL extension is designed to enhance the performance of Ray.Aop by eliminating the need for CodeGen, resulting in faster execution speeds. While it is primarily created for Ray.Aop, it can also be used to implement custom AOP solutions independently of Ray.Aop.
+
+By using this extension, developers can achieve high-performance method interception without the overhead of generating and compiling additional code.
 
 ## Usage
 
