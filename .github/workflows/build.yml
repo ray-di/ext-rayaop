@@ -1,0 +1,44 @@
+name: Build and Test PHP Extension
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        php-version: ['8.0', '8.1', '8.2', '8.3']
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up PHP ${{ matrix.php-version }}
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php-version }}
+          extensions: mbstring, intl
+
+      - name: Install build tools
+        run: sudo apt-get update && sudo apt-get install -y autoconf automake libtool bison re2c
+
+      - name: Prepare build
+        run: |
+          phpize
+          ./configure --enable-helloworld-advanced
+          make
+
+      - name: Run tests
+        run: make test
+
+      - name: Run demo
+        run: |
+          php -d extension=./modules/helloworld.so -i | grep hello
+          echo '<?php helloworld(); helloworld_advanced();' | php -d extension=./modules/helloworld.so -dhelloworld.greeting="konichiwa"

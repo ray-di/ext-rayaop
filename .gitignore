@@ -1,0 +1,32 @@
+# Ignore specific files in the root directory
+/config.h
+/config.h.in
+/config.log
+/config.nice
+/config.status
+/Makefile
+/run-tests.php
+
+# Ignore libtool file
+/libtool
+
+# Ignore any files at root that starts with 'configure'
+/configure*
+
+# Ignore directories
+# The trailing slash `/` ensures that Git ignores the whole directory
+/build/
+/.libs/
+/autom4te.cache/
+*.dep
+*.lo
+*.la
+*.o
+
+# Ignore patterns
+# Ignores all .m4 files in the /build directory and its subdirectories
+/build/*.m4
+
+# Ignore directories and its content
+/Makefile.fragments
+/Makefile.objects
