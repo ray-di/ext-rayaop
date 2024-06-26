@@ -9,7 +9,7 @@ clean() {
 prepare() {
     echo "Preparing..."
     phpize
-    ./configure --enable-rayaop-advanced
+    ./configure
 }
 
 build() {
@@ -24,7 +24,7 @@ install() {
 
 run() {
     echo "Run..."
-    php -dextension=modules/rayaop.so -drayaop.greeting="konichiwa" rayaop.php
+    php -dextension=modules/rayaop.so -ddisplay_errors=1 rayaop.php
 }
 
 case $1 in
