@@ -59,8 +59,10 @@ static void rayaop_zend_execute_ex(zend_execute_data *execute_data)
 
                 zval_ptr_dtor(&params[1]);
                 zval_ptr_dtor(&params[2]);
-                zval_ptr_dtor(&retval);
-                return;  // インターセプト後は元のメソッドを呼び出さない
+
+                // インターセプトハンドラーの戻り値を使用
+                ZVAL_COPY_VALUE(execute_data->return_value, &retval);
+                return;
             }
             info = info->next;
         }

@@ -14,8 +14,8 @@ namespace {
         {
             echo "Intercepted: " . get_class($object) . "::{$method}\n";
             echo "Arguments: " . json_encode($params) . "\n";
-
-            // 元のメソッドを呼び出す
+            
+            // 元のメソッドを呼び出し、結果を返す
             return call_user_func_array([$object, $method], $params);
         }
     }
@@ -45,11 +45,11 @@ namespace {
 
     echo "Creating TestClass instance\n";
     $test = new TestClass();
-
+    
     echo "Calling testMethod (should be intercepted)\n";
     $result1 = $test->testMethod("test");
     echo "Result: $result1\n";
-
+    
     echo "\nCalling nonInterceptedMethod (should not be intercepted)\n";
     $result2 = $test->nonInterceptedMethod("test");
     echo "Result: $result2\n";
