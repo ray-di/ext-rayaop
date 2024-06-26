@@ -1,5 +1,12 @@
 <?php
 
+// デバッグ関数が利用可能か確認
+if (function_exists('rayaop_debug')) {
+    rayaop_debug();
+} else {
+    echo "rayaop_debug function not available\n";
+}
+
 // グローバル関数（インターセプトされない）
 function sayHello($name) {
     echo "sayHello($name) called\n";
