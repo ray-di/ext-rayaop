@@ -15,6 +15,7 @@ namespace {
             echo "Intercepted: " . get_class($object) . "::{$method}\n";
             echo "Arguments: " . json_encode($params) . "\n";
 
+            // 元のメソッドを呼び出す
             return call_user_func_array([$object, $method], $params);
         }
     }
@@ -49,9 +50,9 @@ namespace {
     $result1 = $test->testMethod("test");
     echo "Result: $result1\n";
 
-    echo "Calling nonInterceptedMethod (should not be intercepted)\n";
+    echo "\nCalling nonInterceptedMethod (should not be intercepted)\n";
     $result2 = $test->nonInterceptedMethod("test");
     echo "Result: $result2\n";
 
-    echo "Script execution completed\n";
+    echo "\nScript execution completed\n";
 }

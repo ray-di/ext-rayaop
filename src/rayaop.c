@@ -9,7 +9,6 @@
 #include "zend_interfaces.h"
 #include "php_rayaop.h"
 
-// インターセプト情報を保持する構造体
 typedef struct _intercept_info {
     char *class_name;
     char *method_name;
@@ -17,21 +16,23 @@ typedef struct _intercept_info {
     struct _intercept_info *next;
 } intercept_info;
 
-// インターセプト情報のリスト
 static intercept_info *intercept_list = NULL;
-
 static void (*original_zend_execute_ex)(zend_execute_data *execute_data);
+static zend_bool is_intercepting = 0;  // インターセプト中フラグ
 
-// 新しいzend_execute_ex関数の実装
 static void rayaop_zend_execute_ex(zend_execute_data *execute_data)
 {
+    if (is_intercepting) {
+        original_zend_execute_ex(execute_data);
+        return;
+    }
+
     zend_function *current_function = execute_data->func;
 
     if (current_function->common.scope && current_function->common.function_name) {
         const char *class_name = ZSTR_VAL(current_function->common.scope->name);
         const char *method_name = ZSTR_VAL(current_function->common.function_name);
 
-        // インターセプト情報を検索
         intercept_info *info = intercept_list;
         while (info) {
             if (strcmp(info->class_name, class_name) == 0 && strcmp(info->method_name, method_name) == 0) {
@@ -49,15 +50,17 @@ static void rayaop_zend_execute_ex(zend_execute_data *execute_data)
                     add_next_index_zval(&params[2], arg);
                 }
 
+                is_intercepting = 1;  // インターセプト中フラグをセット
                 zval func_name;
                 ZVAL_STRING(&func_name, "intercept");
                 call_user_function(NULL, info->handler, &func_name, &retval, 3, params);
                 zval_ptr_dtor(&func_name);
+                is_intercepting = 0;  // インターセプト中フラグをリセット
 
                 zval_ptr_dtor(&params[1]);
                 zval_ptr_dtor(&params[2]);
                 zval_ptr_dtor(&retval);
-                break;
+                return;  // インターセプト後は元のメソッドを呼び出さない
             }
             info = info->next;
         }
@@ -65,6 +68,12 @@ static void rayaop_zend_execute_ex(zend_execute_data *execute_data)
 
     original_zend_execute_ex(execute_data);
 }
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_method_intercept, 0, 0, 3)
+    ZEND_ARG_TYPE_INFO(0, class_name, IS_STRING, 0)
+    ZEND_ARG_TYPE_INFO(0, method_name, IS_STRING, 0)
+    ZEND_ARG_OBJ_INFO(0, interceptor, Ray\\Aop\\InterceptedInterface, 0)
+ZEND_END_ARG_INFO()
 
 PHP_FUNCTION(method_intercept)
 {
@@ -99,7 +108,6 @@ PHP_MINIT_FUNCTION(rayaop)
 PHP_MSHUTDOWN_FUNCTION(rayaop)
 {
     zend_execute_ex = original_zend_execute_ex;
-    // インターセプト情報のクリーンアップ
     while (intercept_list) {
         intercept_info *temp = intercept_list;
         intercept_list = intercept_list->next;
@@ -121,7 +129,7 @@ PHP_MINFO_FUNCTION(rayaop)
 }
 
 static const zend_function_entry rayaop_functions[] = {
-    PHP_FE(method_intercept, NULL)
+    PHP_FE(method_intercept, arginfo_method_intercept)
     PHP_FE_END
 };
 
