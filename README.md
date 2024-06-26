@@ -1,66 +1,105 @@
-# HelloWorld PHP Extension
+# Ray.Aop PHP Extension
 
-[![Build and Test PHP Extension](https://github.com/koriym/ext-rayaop/actions/workflows/build.yml/badge.svg)](https://github.com/koriym/ext-rayaop/actions/workflows/build.yml)
+<img src="https://ray-di.github.io/images/logo.svg" alt="ray-di logo" width="150px;">
 
-A simple PHP extension that demonstrates basic and advanced "Hello World" functionality.
+A PHP extension that provides Aspect-Oriented Programming (AOP) functionality for method interception.
 
 ## Features
 
-- Basic `rayaop()` function
-- Advanced `rayaop_advanced()` function with configurable greeting
+- Intercept method calls on specific classes
+- Apply custom logic before and after method execution
+- Modify method arguments and return values
 
-## Run
+## Requirements
 
-1. Compile the extension:
+- PHP 8.0 or higher
+- php-dev package installed
 
-    ```
-    // make clean
-    // phpize --clean
-    phpize
-    ./configure --enable-rayaop-advanced
-    make
-    ```
+## Installation
 
-2. Run
+2.Compile the extension:
+   ```
+   phpize
+   ./configure
+   make
+   ```
 
-    ```
-    % php -d extension=./modules/rayaop.so -i | grep rayaop
+3. Install the extension:
+   ```
+   sudo make install
+   ```
 
-    rayaop
-    rayaop support => enabled
-    rayaop.greeting => Hello AOP! => Hello AOP!
-
-    % php -d extension=./modules/rayaop.so php/rayaop.php
-    Hello AOP!
-    Hello AOP!
+4. Add the following line to your php.ini file:
+   ```
+   extension=rayaop.so
    ```
 
 ## Usage
 
-### Basic Function
+### Defining an Interceptor
+
+Create a class that implements the `Ray\Aop\InterceptedInterface`:
 
 ```php
-<?php
-rayaop();
-// Output: Hello AOP!
+namespace Ray\Aop {
+    interface InterceptedInterface
+    {
+        public function intercept(object $object, string $method, array $params): mixed;
+    }
+}
+
+class MyInterceptor implements Ray\Aop\InterceptedInterface
+{
+    public function intercept(object $object, string $method, array $params): mixed
+    {
+        echo "Intercepted: " . get_class($object) . "::{$method}\n";
+        echo "Arguments: " . json_encode($params) . "\n";
+        
+        // Call the original method
+        $result = call_user_func_array([$object, $method], $params);
+        
+        echo "Method execution completed.\n";
+        
+        return $result;
+    }
+}
 ```
 
-### Advanced Function
+### Registering an Interceptor
+
+Use the `method_intercept` function to register an interceptor for a specific class and method:
 
 ```php
-<?php
-rayaop_advanced();
-// Output: [Configurable greeting from php.ini]
-
+$interceptor = new MyInterceptor();
+method_intercept('TestClass', 'testMethod', $interceptor);
 ```
 
-To configure the greeting, add the following to your php.ini:
+### Example
+
+```php
+class TestClass
+{
+    public function testMethod($arg)
+    {
+        echo "TestClass::testMethod($arg) called\n";
+        return "Result: $arg";
+    }
+}
+
+$test = new TestClass();
+$result = $test->testMethod("test");
+echo "Result: $result\n";
+```
+
+## Running Tests
+
+To run the tests, use the following command:
 
 ```
-rayaop.greeting = "Your custom greeting!"
+php -dextension=./modules/rayaop.so test/rayaop_test.php
 ```
 
-## Build script
+## Build Script
 
 You can use the build.sh script for various build operations:
 
@@ -71,3 +110,11 @@ You can use the build.sh script for various build operations:
 ./build.sh run     # Run the extension
 ./build.sh all     # Execute all the above steps
 ```
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
