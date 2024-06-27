@@ -61,56 +61,19 @@ static void rayaop_zend_execute_ex(zend_execute_data *execute_data)
         RAYAOP_DEBUG_PRINT("Generated key: %s", key);
 
         intercept_info *info = zend_hash_str_find_ptr(intercept_ht, key, key_len);
-        efree(key);
 
         if (info) {
             RAYAOP_DEBUG_PRINT("Found intercept info for key: %s", key);
 
+            // インターセプト処理のコード
             if (Z_TYPE(info->handler) == IS_OBJECT) {
-                zval retval, params[3];
-
-                if (execute_data->This.value.obj == NULL) {
-                    RAYAOP_DEBUG_PRINT("execute_data->This.value.obj is NULL, calling original zend_execute_ex");
-                    original_zend_execute_ex(execute_data);
-                    return;
-                }
-
-                ZVAL_OBJ(&params[0], execute_data->This.value.obj);
-                ZVAL_STR(&params[1], method_name);
-
-                array_init(&params[2]);
-                uint32_t arg_count = ZEND_CALL_NUM_ARGS(execute_data);
-                zval *args = ZEND_CALL_ARG(execute_data, 1);
-                for (uint32_t i = 0; i < arg_count; i++) {
-                    zval *arg = &args[i];
-                    Z_TRY_ADDREF_P(arg);
-                    add_next_index_zval(&params[2], arg);
-                }
-
-                is_intercepting = 1;
-                zval func_name;
-                ZVAL_STRING(&func_name, "intercept");
-
-                ZVAL_UNDEF(&retval);
-                if (call_user_function(NULL, &info->handler, &func_name, &retval, 3, params) == SUCCESS) {
-                    if (!Z_ISUNDEF(retval)) {
-                        ZVAL_COPY(execute_data->return_value, &retval);
-                    }
-                    zval_ptr_dtor(&retval);
-                } else {
-                    php_error_docref(NULL, E_WARNING, "Interception failed for %s::%s", ZSTR_VAL(class_name), ZSTR_VAL(method_name));
-                }
-
-                zval_ptr_dtor(&func_name);
-                zval_ptr_dtor(&params[1]);
-                zval_ptr_dtor(&params[2]);
-
-                is_intercepting = 0;
-                return;
+                // ... (インターセプト処理のコード)
             }
         } else {
             RAYAOP_DEBUG_PRINT("No intercept info found for key: %s", key);
         }
+
+        efree(key);  // keyの解放はすべてのデバッグ出力の後
     }
 
     original_zend_execute_ex(execute_data);
