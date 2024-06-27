@@ -164,22 +164,25 @@ static void free_intercept_info(zval *zv)
         RAYAOP_DEBUG_PRINT("Freeing intercept info for %s::%s", ZSTR_VAL(info->class_name), ZSTR_VAL(info->method_name));
 
         if (info->class_name) {
-            RAYAOP_DEBUG_PRINT("Releasing class_name: %s", ZSTR_VAL(info->class_name));
+            RAYAOP_DEBUG_PRINT("Before releasing class_name: %s", ZSTR_VAL(info->class_name));
             zend_string_release(info->class_name);
             info->class_name = NULL;
+            RAYAOP_DEBUG_PRINT("After releasing class_name");
         }
 
         if (info->method_name) {
-            RAYAOP_DEBUG_PRINT("Releasing method_name: %s", ZSTR_VAL(info->method_name));
+            RAYAOP_DEBUG_PRINT("Before releasing method_name: %s", ZSTR_VAL(info->method_name));
             zend_string_release(info->method_name);
             info->method_name = NULL;
+            RAYAOP_DEBUG_PRINT("After releasing method_name");
         }
 
         RAYAOP_DEBUG_PRINT("Releasing handler");
         zval_ptr_dtor(&info->handler);
 
-        RAYAOP_DEBUG_PRINT("Freeing info struct");
+        RAYAOP_DEBUG_PRINT("Before freeing info struct");
         efree(info);
+        RAYAOP_DEBUG_PRINT("After freeing info struct");
         RAYAOP_DEBUG_PRINT("Memory freed for intercept info");
     }
 }
@@ -209,7 +212,9 @@ PHP_MSHUTDOWN_FUNCTION(rayaop)
     zend_execute_ex = original_zend_execute_ex;
 
     if (intercept_ht) {
+        RAYAOP_DEBUG_PRINT("Destroying intercept_ht");
         zend_hash_destroy(intercept_ht);
+        RAYAOP_DEBUG_PRINT("Destroyed intercept_ht");
         pefree(intercept_ht, 1);
         intercept_ht = NULL;
         RAYAOP_DEBUG_PRINT("Intercept hash table destroyed and freed");
