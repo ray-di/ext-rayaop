@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -x  # Enable debug mode
+
 clean() {
     echo "Cleaning..."
     make clean
@@ -9,8 +11,9 @@ clean() {
 prepare() {
     echo "Preparing..."
     phpize
-    ./configure
+    ./configure CFLAGS="-g -O0"
 }
+
 
 build() {
     echo "Building..."
@@ -24,7 +27,17 @@ install() {
 
 run() {
     echo "Run..."
-    php -dextension=modules/rayaop.so -ddisplay_errors=1 rayaop.php
+    php -dextension=./modules/rayaop.so rayaop.php
+}
+
+prepate_lldb() {
+    echo "Configure with lldb"
+    ./configure CFLAGS="-g -O0"
+}
+
+run_lldb() {
+   echo "Run with lldb"
+   lldb -- php -dextension=./modules/rayaop.so rayaop.php
 }
 
 case $1 in
@@ -48,6 +61,12 @@ case $1 in
         prepare
         build
         run
+        ;;
+    lldb)
+        clean
+        prepate_lldb
+        build
+        run_lldb
         ;;
     *)
         echo "Usage: $0 {clean|prepare|build|install|run|all}"
