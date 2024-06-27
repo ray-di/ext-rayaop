@@ -9,16 +9,31 @@
 #include "zend_interfaces.h"
 #include "php_rayaop.h"
 
+#ifdef ZTS
+#include "TSRM.h"
+#endif
+
 typedef struct _intercept_info {
-    char *class_name;
-    char *method_name;
+    zend_string *class_name;
+    zend_string *method_name;
     zval handler;
     struct _intercept_info *next;
 } intercept_info;
 
-static intercept_info *intercept_list = NULL;
+static HashTable *intercept_ht = NULL;
 static void (*original_zend_execute_ex)(zend_execute_data *execute_data);
-static zend_bool is_intercepting = 0;  // インターセプト中フラグ
+
+#ifdef ZTS
+static THREAD_LOCAL zend_bool is_intercepting = 0;
+#else
+static zend_bool is_intercepting = 0;
+#endif
+
+#ifdef RAYAOP_DEBUG
+#define RAYAOP_DEBUG_PRINT(fmt, ...) php_printf("RAYAOP DEBUG: " fmt "\n", ##__VA_ARGS__)
+#else
+#define RAYAOP_DEBUG_PRINT(fmt, ...)
+#endif
 
 static void rayaop_zend_execute_ex(zend_execute_data *execute_data)
 {
@@ -30,12 +45,19 @@ static void rayaop_zend_execute_ex(zend_execute_data *execute_data)
     zend_function *current_function = execute_data->func;
 
     if (current_function->common.scope && current_function->common.function_name) {
-        const char *class_name = ZSTR_VAL(current_function->common.scope->name);
-        const char *method_name = ZSTR_VAL(current_function->common.function_name);
+        zend_string *class_name = current_function->common.scope->name;
+        zend_string *method_name = current_function->common.function_name;
 
-        intercept_info *info = intercept_list;
-        while (info) {
-            if (strcmp(info->class_name, class_name) == 0 && strcmp(info->method_name, method_name) == 0) {
+        char *key = NULL;
+        size_t key_len = 0;
+        key_len = spprintf(&key, 0, "%s::%s", ZSTR_VAL(class_name), ZSTR_VAL(method_name));
+
+        intercept_info *info = NULL;
+        if (zend_hash_str_find_ptr(intercept_ht, key, key_len) != NULL) {
+            info = zend_hash_str_find_ptr(intercept_ht, key, key_len);
+            efree(key);
+
+            if (info && Z_TYPE(info->handler) == IS_OBJECT) {
                 zval retval, params[3];
 
                 if (execute_data->This.value.obj == NULL) {
@@ -44,7 +66,7 @@ static void rayaop_zend_execute_ex(zend_execute_data *execute_data)
                 }
 
                 ZVAL_OBJ(&params[0], execute_data->This.value.obj);
-                ZVAL_STRING(&params[1], method_name);
+                ZVAL_STR(&params[1], method_name);
 
                 array_init(&params[2]);
                 uint32_t arg_count = ZEND_CALL_NUM_ARGS(execute_data);
@@ -55,28 +77,29 @@ static void rayaop_zend_execute_ex(zend_execute_data *execute_data)
                     add_next_index_zval(&params[2], arg);
                 }
 
-                is_intercepting = 1;  // インターセプト中フラグをセット
+                is_intercepting = 1;
                 zval func_name;
                 ZVAL_STRING(&func_name, "intercept");
 
                 ZVAL_UNDEF(&retval);
                 if (call_user_function(NULL, &info->handler, &func_name, &retval, 3, params) == SUCCESS) {
                     if (!Z_ISUNDEF(retval)) {
-                        ZVAL_COPY_VALUE(execute_data->return_value, &retval);
+                        ZVAL_COPY(execute_data->return_value, &retval);
                     }
                     zval_ptr_dtor(&retval);
                 } else {
-                    php_error_docref(NULL, E_WARNING, "Interception failed");
+                    php_error_docref(NULL, E_WARNING, "Interception failed for %s::%s", ZSTR_VAL(class_name), ZSTR_VAL(method_name));
                 }
 
                 zval_ptr_dtor(&func_name);
                 zval_ptr_dtor(&params[1]);
                 zval_ptr_dtor(&params[2]);
 
-                is_intercepting = 0;  // インターセプト中フラグをリセット
+                is_intercepting = 0;
                 return;
             }
-            info = info->next;
+        } else {
+            efree(key);
         }
     }
 
@@ -101,48 +124,53 @@ PHP_FUNCTION(method_intercept)
         Z_PARAM_OBJECT(intercepted)
     ZEND_PARSE_PARAMETERS_END();
 
-    intercept_info *new_info = emalloc(sizeof(intercept_info));
+    if (!instanceof_function(Z_OBJCE_P(intercepted), zend_ce_ray_aop_interceptedinterface)) {
+        php_error_docref(NULL, E_WARNING, "Interceptor must implement Ray\\Aop\\InterceptedInterface");
+        RETURN_FALSE;
+    }
+
+    intercept_info *new_info = ecalloc(1, sizeof(intercept_info));
     if (!new_info) {
         php_error_docref(NULL, E_ERROR, "Memory allocation failed");
         RETURN_FALSE;
     }
 
-    new_info->class_name = estrndup(class_name, class_name_len);
-    new_info->method_name = estrndup(method_name, method_name_len);
-    if (!new_info->class_name || !new_info->method_name) {
-        if (new_info->class_name) efree(new_info->class_name);
-        if (new_info->method_name) efree(new_info->method_name);
-        efree(new_info);
-        php_error_docref(NULL, E_ERROR, "Memory allocation failed");
-        RETURN_FALSE;
-    }
-
+    new_info->class_name = zend_string_init(class_name, class_name_len, 0);
+    new_info->method_name = zend_string_init(method_name, method_name_len, 0);
     ZVAL_COPY(&new_info->handler, intercepted);
-    new_info->next = intercept_list;
-    intercept_list = new_info;
 
-    RETURN_NULL();
+    char *key = NULL;
+    size_t key_len = 0;
+    key_len = spprintf(&key, 0, "%s::%s", class_name, method_name);
+
+    zend_hash_str_update_ptr(intercept_ht, key, key_len, new_info);
+    efree(key);
+
+    RAYAOP_DEBUG_PRINT("Registered interceptor for %s::%s", class_name, method_name);
+
+    RETURN_TRUE;
 }
 
 PHP_MINIT_FUNCTION(rayaop)
 {
     original_zend_execute_ex = zend_execute_ex;
     zend_execute_ex = rayaop_zend_execute_ex;
+
+    intercept_ht = pemalloc(sizeof(HashTable), 1);
+    zend_hash_init(intercept_ht, 8, NULL, NULL, 1);
+
+    RAYAOP_DEBUG_PRINT("RayAOP extension initialized");
     return SUCCESS;
 }
 
 PHP_MSHUTDOWN_FUNCTION(rayaop)
 {
     zend_execute_ex = original_zend_execute_ex;
-    while (intercept_list) {
-        intercept_info *temp = intercept_list;
-        intercept_list = intercept_list->next;
 
-        if (temp->class_name) efree(temp->class_name);
-        if (temp->method_name) efree(temp->method_name);
-        zval_ptr_dtor(&temp->handler);
-        efree(temp);
-    }
+    zend_hash_destroy(intercept_ht);
+    pefree(intercept_ht, 1);
+
+    RAYAOP_DEBUG_PRINT("RayAOP extension shut down");
     return SUCCESS;
 }
 
