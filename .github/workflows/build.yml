@@ -38,4 +38,4 @@ jobs:
       - name: Run demo
         run: |
           php -d extension=./modules/rayaop.so -i | grep rayaop
-          php -d extension=./modules/rayaop.so rayphp.php
+          php -d extension=./modules/rayaop.so rayaop.php
