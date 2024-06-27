@@ -165,12 +165,10 @@ static void free_intercept_info(zval *zv)
 
         if (info->class_name) {
             zend_string_release(info->class_name);
-            info->class_name = NULL;
         }
 
         if (info->method_name) {
             zend_string_release(info->method_name);
-            info->method_name = NULL;
         }
 
         zval_ptr_dtor(&info->handler);
