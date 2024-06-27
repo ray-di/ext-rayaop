@@ -13,7 +13,7 @@
 #include "TSRM.h"
 #endif
 
-#define RAYAOP_DEBUG
+//#define RAYAOP_DEBUG
 
 typedef struct _intercept_info {
     zend_string *class_name;
