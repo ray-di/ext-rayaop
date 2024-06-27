@@ -159,6 +159,19 @@ PHP_FUNCTION(method_intercept)
     RETURN_TRUE;
 }
 
+static int efree_intercept_info(zval *zv)
+{
+    intercept_info *info = Z_PTR_P(zv);
+    if (info) {
+        RAYAOP_DEBUG_PRINT("Freeing intercept info for %s::%s", ZSTR_VAL(info->class_name), ZSTR_VAL(info->method_name));
+        zend_string_release(info->class_name);
+        zend_string_release(info->method_name);
+        zval_ptr_dtor(&info->handler);
+        efree(info);
+    }
+    return ZEND_HASH_APPLY_REMOVE;
+}
+
 PHP_MINIT_FUNCTION(rayaop)
 {
     zend_class_entry ce;
@@ -179,8 +192,11 @@ PHP_MSHUTDOWN_FUNCTION(rayaop)
 {
     zend_execute_ex = original_zend_execute_ex;
 
-    zend_hash_destroy(intercept_ht);
-    pefree(intercept_ht, 1);
+    if (intercept_ht) {
+        zend_hash_apply(intercept_ht, (apply_func_t) efree_intercept_info);
+        zend_hash_destroy(intercept_ht);
+        pefree(intercept_ht, 1);
+    }
 
     RAYAOP_DEBUG_PRINT("RayAOP extension shut down");
     return SUCCESS;
