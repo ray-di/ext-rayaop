@@ -176,7 +176,6 @@ static void free_intercept_info(zval *zv)
         zval_ptr_dtor(&info->handler);
 
         efree(info);
-        info = NULL;
         RAYAOP_DEBUG_PRINT("Memory freed for intercept info");
     }
 }
