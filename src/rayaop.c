@@ -112,7 +112,7 @@ static void rayaop_zend_execute_ex(zend_execute_data *execute_data)
 ZEND_BEGIN_ARG_INFO_EX(arginfo_method_intercept, 0, 0, 3)
     ZEND_ARG_TYPE_INFO(0, class_name, IS_STRING, 0)
     ZEND_ARG_TYPE_INFO(0, method_name, IS_STRING, 0)
-    ZEND_ARG_OBJ_INFO(0, interceptor, Ray\\Aop\\InterceptedInterface, 0)
+    ZEND_ARG_OBJ_INFO(0, interceptor, Ray\\Aop\\MethodInterceptorInterface, 0)
 ZEND_END_ARG_INFO()
 
 PHP_FUNCTION(method_intercept)
@@ -128,12 +128,12 @@ PHP_FUNCTION(method_intercept)
     ZEND_PARSE_PARAMETERS_END();
 
     if (!zend_ce_ray_aop_interceptedinterface) {
-        php_error_docref(NULL, E_WARNING, "Ray\\Aop\\InterceptedInterface is not defined");
+        php_error_docref(NULL, E_WARNING, "Ray\\Aop\\MethodInterceptorInterface is not defined");
         RETURN_FALSE;
     }
 
     if (!instanceof_function(Z_OBJCE_P(intercepted), zend_ce_ray_aop_interceptedinterface)) {
-        php_error_docref(NULL, E_WARNING, "Interceptor must implement Ray\\Aop\\InterceptedInterface");
+        php_error_docref(NULL, E_WARNING, "Interceptor must implement Ray\\Aop\\MethodInterceptorInterface");
         RETURN_FALSE;
     }
 
@@ -162,7 +162,7 @@ PHP_FUNCTION(method_intercept)
 PHP_MINIT_FUNCTION(rayaop)
 {
     zend_class_entry ce;
-    INIT_CLASS_ENTRY(ce, "Ray\\Aop\\InterceptedInterface", NULL);
+    INIT_CLASS_ENTRY(ce, "Ray\\Aop\\MethodInterceptorInterface", NULL);
     zend_ce_ray_aop_interceptedinterface = zend_register_internal_interface(&ce);
 
     original_zend_execute_ex = zend_execute_ex;

@@ -47,17 +47,17 @@ By using this extension, developers can achieve high-performance method intercep
 
 ### Defining an Interceptor
 
-Create a class that implements the `Ray\Aop\InterceptedInterface`:
+Create a class that implements the `Ray\Aop\MethodInterceptorInterface`:
 
 ```php
 namespace Ray\Aop {
-    interface InterceptedInterface
+    interface MethodInterceptorInterface
     {
         public function intercept(object $object, string $method, array $params): mixed;
     }
 }
 
-class MyInterceptor implements Ray\Aop\InterceptedInterface
+class MyInterceptor implements Ray\Aop\MethodInterceptorInterface
 {
     public function intercept(object $object, string $method, array $params): mixed
     {

@@ -1,14 +1,14 @@
 <?php
 
-namespace Ray\Aop {
-    interface InterceptedInterface
-    {
-        public function intercept(object $object, string $method, array $params): mixed;
-    }
-}
+// namespace Ray\Aop {
+//     interface MethodInterceptorInterface
+//     {
+//         public function intercept(object $object, string $method, array $params): mixed;
+//     }
+// }
 
 namespace {
-    class Intercepted implements Ray\Aop\InterceptedInterface
+    class Intercepted implements Ray\Aop\MethodInterceptorInterface
     {
         public function intercept(object $object, string $method, array $params): mixed
         {
