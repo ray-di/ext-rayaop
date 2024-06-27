@@ -67,7 +67,49 @@ static void rayaop_zend_execute_ex(zend_execute_data *execute_data)
 
             // インターセプト処理のコード
             if (Z_TYPE(info->handler) == IS_OBJECT) {
-                // ... (インターセプト処理のコード)
+                zval retval, params[3];
+
+                // オブジェクトが NULL の場合は元の関数を実行
+                if (execute_data->This.value.obj == NULL) {
+                    original_zend_execute_ex(execute_data);
+                    return;
+                }
+
+                // インターセプトハンドラーへのパラメータ設定
+                ZVAL_OBJ(&params[0], execute_data->This.value.obj);
+                ZVAL_STR(&params[1], method_name);
+
+                array_init(&params[2]);
+                uint32_t arg_count = ZEND_CALL_NUM_ARGS(execute_data);
+                zval *args = ZEND_CALL_ARG(execute_data, 1);
+                for (uint32_t i = 0; i < arg_count; i++) {
+                    zval *arg = &args[i];
+                    Z_TRY_ADDREF_P(arg);
+                    add_next_index_zval(&params[2], arg);
+                }
+
+                is_intercepting = 1;
+                zval func_name;
+                ZVAL_STRING(&func_name, "intercept");
+
+                // インターセプトハンドラーの呼び出し
+                ZVAL_UNDEF(&retval);
+                if (call_user_function(NULL, &info->handler, &func_name, &retval, 3, params) == SUCCESS) {
+                    if (!Z_ISUNDEF(retval)) {
+                        ZVAL_COPY(execute_data->return_value, &retval);
+                    }
+                    zval_ptr_dtor(&retval);
+                } else {
+                    php_error_docref(NULL, E_WARNING, "Interception failed for %s::%s", ZSTR_VAL(class_name), ZSTR_VAL(method_name));
+                }
+
+                // クリーンアップ
+                zval_ptr_dtor(&func_name);
+                zval_ptr_dtor(&params[1]);
+                zval_ptr_dtor(&params[2]);
+
+                is_intercepting = 0;
+                return;
             }
         } else {
             RAYAOP_DEBUG_PRINT("No intercept info found for key: %s", key);
