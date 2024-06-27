@@ -18,6 +18,7 @@
 /**
  * インターセプト情報を保持する構造体
  * @link https://www.phpinternalsbook.com/php5/classes_objects/internal_structures_and_implementation.html
+ * @link http://php.adamharvey.name/manual/ja/internals2.variables.tables.php
  */
 typedef struct _intercept_info {
     zend_string *class_name;     // インターセプト対象のクラス名
@@ -245,6 +246,7 @@ PHP_MINFO_FUNCTION(rayaop)
     php_info_print_table_end();  // 情報テーブルの終了
 }
 
+// https://www.phpinternalsbook.com/php7/extensions_design/php_functions.html
 static const zend_function_entry rayaop_functions[] = {
     PHP_FE(method_intercept, arginfo_method_intercept)  // method_intercept関数の登録
     PHP_FE_END
