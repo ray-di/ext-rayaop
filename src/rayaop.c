@@ -11,6 +11,7 @@
 #ifdef ZTS
 #include "TSRM.h"
 #endif
+#include <stdio.h>
 
 #define RAYAOP_DEBUG
 
@@ -157,6 +158,18 @@ PHP_FUNCTION(method_intercept)
     RETURN_TRUE;
 }
 
+static void dump_memory(const void *ptr, size_t size)
+{
+    const unsigned char *byte = ptr;
+    for (size_t i = 0; i < size; i++) {
+        printf("%02x ", byte[i]);
+        if ((i + 1) % 16 == 0) {
+            printf("\n");
+        }
+    }
+    printf("\n");
+}
+
 static void free_intercept_info(zval *zv)
 {
     intercept_info *info = Z_PTR_P(zv);
@@ -165,6 +178,7 @@ static void free_intercept_info(zval *zv)
 
         if (info->class_name) {
             RAYAOP_DEBUG_PRINT("Before releasing class_name: %s", ZSTR_VAL(info->class_name));
+            dump_memory(info->class_name, sizeof(*(info->class_name)));  // メモリダンプを追加
             zend_string_release(info->class_name);
             info->class_name = NULL;
             RAYAOP_DEBUG_PRINT("After releasing class_name");
@@ -172,6 +186,7 @@ static void free_intercept_info(zval *zv)
 
         if (info->method_name) {
             RAYAOP_DEBUG_PRINT("Before releasing method_name: %s", ZSTR_VAL(info->method_name));
+            dump_memory(info->method_name, sizeof(*(info->method_name)));  // メモリダンプを追加
             zend_string_release(info->method_name);
             info->method_name = NULL;
             RAYAOP_DEBUG_PRINT("After releasing method_name");
@@ -181,6 +196,7 @@ static void free_intercept_info(zval *zv)
         zval_ptr_dtor(&info->handler);
 
         RAYAOP_DEBUG_PRINT("Before freeing info struct");
+        dump_memory(info, sizeof(*info));  // メモリダンプを追加
         efree(info);
         RAYAOP_DEBUG_PRINT("After freeing info struct");
         RAYAOP_DEBUG_PRINT("Memory freed for intercept info");
