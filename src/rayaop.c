@@ -170,6 +170,18 @@ static void dump_memory(const void *ptr, size_t size)
     printf("\n");
 }
 
+static void dump_zend_string(zend_string *str)
+{
+    if (str) {
+        printf("zend_string dump:\n");
+        printf("  val: %s\n", ZSTR_VAL(str));
+        printf("  len: %zu\n", ZSTR_LEN(str));
+        printf("  h: %u\n", str->h);
+        printf("  refcounted: %d\n", ZSTR_IS_REFCOUNTED(str));
+        dump_memory(str, sizeof(*str));
+    }
+}
+
 static void free_intercept_info(zval *zv)
 {
     intercept_info *info = Z_PTR_P(zv);
@@ -177,25 +189,25 @@ static void free_intercept_info(zval *zv)
         RAYAOP_DEBUG_PRINT("Freeing intercept info for %s::%s", ZSTR_VAL(info->class_name), ZSTR_VAL(info->method_name));
 
         if (info->class_name) {
-            if (ZSTR_IS_INTERNED(info->class_name)) {
-                RAYAOP_DEBUG_PRINT("class_name is interned: %s", ZSTR_VAL(info->class_name));
-            } else {
-                RAYAOP_DEBUG_PRINT("Before releasing class_name: %s", ZSTR_VAL(info->class_name));
-                dump_memory(info->class_name, ZSTR_LEN(info->class_name));  // メモリダンプを追加
+            RAYAOP_DEBUG_PRINT("Before releasing class_name: %s", ZSTR_VAL(info->class_name));
+            dump_zend_string(info->class_name);  // zend_string の詳細なダンプ
+            if (!ZSTR_IS_INTERNED(info->class_name)) {
                 zend_string_release(info->class_name);
                 RAYAOP_DEBUG_PRINT("After releasing class_name");
+            } else {
+                RAYAOP_DEBUG_PRINT("class_name is interned: %s", ZSTR_VAL(info->class_name));
             }
             info->class_name = NULL;
         }
 
         if (info->method_name) {
-            if (ZSTR_IS_INTERNED(info->method_name)) {
-                RAYAOP_DEBUG_PRINT("method_name is interned: %s", ZSTR_VAL(info->method_name));
-            } else {
-                RAYAOP_DEBUG_PRINT("Before releasing method_name: %s", ZSTR_VAL(info->method_name));
-                dump_memory(info->method_name, ZSTR_LEN(info->method_name));  // メモリダンプを追加
+            RAYAOP_DEBUG_PRINT("Before releasing method_name: %s", ZSTR_VAL(info->method_name));
+            dump_zend_string(info->method_name);  // zend_string の詳細なダンプ
+            if (!ZSTR_IS_INTERNED(info->method_name)) {
                 zend_string_release(info->method_name);
                 RAYAOP_DEBUG_PRINT("After releasing method_name");
+            } else {
+                RAYAOP_DEBUG_PRINT("method_name is interned: %s", ZSTR_VAL(info->method_name));
             }
             info->method_name = NULL;
         }
@@ -210,7 +222,6 @@ static void free_intercept_info(zval *zv)
         RAYAOP_DEBUG_PRINT("Memory freed for intercept info");
     }
 }
-
 
 PHP_MINIT_FUNCTION(rayaop)
 {
