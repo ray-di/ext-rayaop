@@ -110,8 +110,8 @@ PHP_FUNCTION(method_intercept)
     new_info->class_name = estrndup(class_name, class_name_len);
     new_info->method_name = estrndup(method_name, method_name_len);
     if (!new_info->class_name || !new_info->method_name) {
-        efree(new_info->class_name);
-        efree(new_info->method_name);
+        if (new_info->class_name) efree(new_info->class_name);
+        if (new_info->method_name) efree(new_info->method_name);
         efree(new_info);
         php_error_docref(NULL, E_ERROR, "Memory allocation failed");
         RETURN_FALSE;
@@ -137,8 +137,9 @@ PHP_MSHUTDOWN_FUNCTION(rayaop)
     while (intercept_list) {
         intercept_info *temp = intercept_list;
         intercept_list = intercept_list->next;
-        efree(temp->class_name);
-        efree(temp->method_name);
+
+        if (temp->class_name) efree(temp->class_name);
+        if (temp->method_name) efree(temp->method_name);
         zval_ptr_dtor(&temp->handler);
         efree(temp);
     }
