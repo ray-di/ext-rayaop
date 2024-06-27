@@ -35,6 +35,9 @@ static zend_bool is_intercepting = 0;
 #define RAYAOP_DEBUG_PRINT(fmt, ...)
 #endif
 
+// Declare the intercepted interface entry
+static zend_class_entry *zend_ce_ray_aop_interceptedinterface;
+
 static void rayaop_zend_execute_ex(zend_execute_data *execute_data)
 {
     if (is_intercepting) {
@@ -153,6 +156,10 @@ PHP_FUNCTION(method_intercept)
 
 PHP_MINIT_FUNCTION(rayaop)
 {
+    zend_class_entry ce;
+    INIT_CLASS_ENTRY(ce, "Ray\\Aop\\InterceptedInterface", NULL);
+    zend_ce_ray_aop_interceptedinterface = zend_register_internal_interface(&ce);
+
     original_zend_execute_ex = zend_execute_ex;
     zend_execute_ex = rayaop_zend_execute_ex;
 
