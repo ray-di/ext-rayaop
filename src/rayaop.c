@@ -164,15 +164,21 @@ static void free_intercept_info(zval *zv)
         RAYAOP_DEBUG_PRINT("Freeing intercept info for %s::%s", ZSTR_VAL(info->class_name), ZSTR_VAL(info->method_name));
 
         if (info->class_name) {
+            RAYAOP_DEBUG_PRINT("Releasing class_name: %s", ZSTR_VAL(info->class_name));
             zend_string_release(info->class_name);
+            info->class_name = NULL;
         }
 
         if (info->method_name) {
+            RAYAOP_DEBUG_PRINT("Releasing method_name: %s", ZSTR_VAL(info->method_name));
             zend_string_release(info->method_name);
+            info->method_name = NULL;
         }
 
+        RAYAOP_DEBUG_PRINT("Releasing handler");
         zval_ptr_dtor(&info->handler);
 
+        RAYAOP_DEBUG_PRINT("Freeing info struct");
         efree(info);
         RAYAOP_DEBUG_PRINT("Memory freed for intercept info");
     }
