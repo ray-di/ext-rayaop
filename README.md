@@ -1,5 +1,7 @@
 # Ray.Aop PHP Extension
 
+[![Build and Test PHP Extension](https://github.com/ray-di/ext-rayaop/actions/workflows/build.yml/badge.svg)](https://github.com/ray-di/ext-rayaop/actions/workflows/build.yml)
+
 <img src="https://ray-di.github.io/images/logo.svg" alt="ray-di logo" width="150px;">
 
 A PHP extension that provides Aspect-Oriented Programming (AOP) functionality for method interception.
