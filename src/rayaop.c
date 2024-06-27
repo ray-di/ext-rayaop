@@ -17,7 +17,7 @@
 
 /**
  * インターセプト情報を保持する構造体
- * @link https://www.php.net/manual/en/internals2.opcodes.php
+ * @link https://www.phpinternalsbook.com/php5/classes_objects/internal_structures_and_implementation.html
  */
 typedef struct _intercept_info {
     zend_string *class_name;     // インターセプト対象のクラス名
@@ -45,7 +45,7 @@ static zend_class_entry *zend_ce_ray_aop_interceptedinterface;  // インター�
 
 /**
  * カスタム zend_execute_ex 関数
- * @link https://www.phpinternalsbook.com/php7/extensions_design/zend_execute_ex.html
+ * @link http://php.adamharvey.name/manual/ja/migration55.internals.php
  */
 static void rayaop_zend_execute_ex(zend_execute_data *execute_data)
 {
@@ -173,7 +173,7 @@ PHP_FUNCTION(method_intercept)
 
 /**
  * インターセプト情報を解放する関数
- * @link https://www.phpinternalsbook.com/php7/internal_structure/hash_tables.html
+ * @link https://www.phpinternalsbook.com/php7/internal_types/strings/zend_strings.html
  */
 static int efree_intercept_info(zval *zv)
 {
@@ -197,7 +197,7 @@ static int efree_intercept_info(zval *zv)
 
 /**
  * 拡張機能の初期化関数
- * @link https://www.phpinternalsbook.com/php7/extensions_design/php_minit_function.html
+ * @link https://www.phpinternalsbook.com/php7/extensions_design/hooks.html
  */
 PHP_MINIT_FUNCTION(rayaop)
 {
@@ -215,7 +215,7 @@ PHP_MINIT_FUNCTION(rayaop)
 
 /**
  * 拡張機能のシャットダウン関数
- * @link https://www.phpinternalsbook.com/php7/extensions_design/php_mshutdown_function.html
+ * @link https://www.phpinternalsbook.com/php7/extensions_design/hooks.html
  */
 PHP_MSHUTDOWN_FUNCTION(rayaop)
 {
@@ -235,7 +235,7 @@ PHP_MSHUTDOWN_FUNCTION(rayaop)
 
 /**
  * 拡張機能の情報表示関数
- * @link https://www.phpinternalsbook.com/php7/extensions_design/php_minfo_function.html
+ * @link https://www.phpinternalsbook.com/php7/extensions_design/extension_infos.html
  */
 PHP_MINFO_FUNCTION(rayaop)
 {
@@ -250,14 +250,15 @@ static const zend_function_entry rayaop_functions[] = {
     PHP_FE_END
 };
 
+// @link https://www.phpinternalsbook.com/php7/extensions_design/extension_infos.html
 zend_module_entry rayaop_module_entry = {
     STANDARD_MODULE_HEADER,
     "rayaop",  // 拡張機能の名前
     rayaop_functions,  // 拡張機能が提供する関数
     PHP_MINIT(rayaop),  // 拡張機能の初期化関数
     PHP_MSHUTDOWN(rayaop),  // 拡張機能のシャットダウン関数
-    NULL,
-    NULL,
+    NULL, /* Request init */
+    NULL, /* Request shutdown */
     PHP_MINFO(rayaop),  // 拡張機能の情報表示関数
     PHP_RAYAOP_VERSION,  // 拡張機能のバージョン
     STANDARD_MODULE_PROPERTIES
