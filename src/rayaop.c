@@ -183,6 +183,16 @@ static void dump_zend_string(zend_string *str)
     }
 }
 
+static void dump_zval(zval *val)
+{
+    if (val) {
+        printf("zval dump:\n");
+        printf("  type: %d\n", Z_TYPE_P(val));
+        printf("  refcount: %d\n", Z_REFCOUNT_P(val));
+        dump_memory(val, sizeof(*val));
+    }
+}
+
 static void free_intercept_info(zval *zv)
 {
     intercept_info *info = Z_PTR_P(zv);
@@ -215,6 +225,7 @@ static void free_intercept_info(zval *zv)
 
         RAYAOP_DEBUG_PRINT("Releasing handler");
         RAYAOP_DEBUG_PRINT("Before zval_ptr_dtor handler");
+        dump_zval(&info->handler);  // zval の詳細なダンプ
         zval_ptr_dtor(&info->handler);
         RAYAOP_DEBUG_PRINT("After zval_ptr_dtor handler");
 
