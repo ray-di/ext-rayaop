@@ -58,15 +58,22 @@ static void rayaop_zend_execute_ex(zend_execute_data *execute_data)
                 is_intercepting = 1;  // インターセプト中フラグをセット
                 zval func_name;
                 ZVAL_STRING(&func_name, "intercept");
-                call_user_function(NULL, &info->handler, &func_name, &retval, 3, params);
-                zval_ptr_dtor(&func_name);
-                is_intercepting = 0;  // インターセプト中フラグをリセット
 
+                ZVAL_UNDEF(&retval);
+                if (call_user_function(NULL, &info->handler, &func_name, &retval, 3, params) == SUCCESS) {
+                    if (!Z_ISUNDEF(retval)) {
+                        ZVAL_COPY_VALUE(execute_data->return_value, &retval);
+                    }
+                    zval_ptr_dtor(&retval);
+                } else {
+                    php_error_docref(NULL, E_WARNING, "Interception failed");
+                }
+
+                zval_ptr_dtor(&func_name);
                 zval_ptr_dtor(&params[1]);
                 zval_ptr_dtor(&params[2]);
 
-                // インターセプトハンドラーの戻り値を使用
-                ZVAL_COPY_VALUE(execute_data->return_value, &retval);
+                is_intercepting = 0;  // インターセプト中フラグをリセット
                 return;
             }
             info = info->next;
@@ -95,8 +102,21 @@ PHP_FUNCTION(method_intercept)
     ZEND_PARSE_PARAMETERS_END();
 
     intercept_info *new_info = emalloc(sizeof(intercept_info));
+    if (!new_info) {
+        php_error_docref(NULL, E_ERROR, "Memory allocation failed");
+        RETURN_FALSE;
+    }
+
     new_info->class_name = estrndup(class_name, class_name_len);
     new_info->method_name = estrndup(method_name, method_name_len);
+    if (!new_info->class_name || !new_info->method_name) {
+        efree(new_info->class_name);
+        efree(new_info->method_name);
+        efree(new_info);
+        php_error_docref(NULL, E_ERROR, "Memory allocation failed");
+        RETURN_FALSE;
+    }
+
     ZVAL_COPY(&new_info->handler, intercepted);
     new_info->next = intercept_list;
     intercept_list = new_info;
