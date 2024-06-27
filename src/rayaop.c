@@ -127,6 +127,11 @@ PHP_FUNCTION(method_intercept)
         Z_PARAM_OBJECT(intercepted)
     ZEND_PARSE_PARAMETERS_END();
 
+    if (!zend_ce_ray_aop_interceptedinterface) {
+        php_error_docref(NULL, E_WARNING, "Ray\\Aop\\InterceptedInterface is not defined");
+        RETURN_FALSE;
+    }
+
     if (!instanceof_function(Z_OBJCE_P(intercepted), zend_ce_ray_aop_interceptedinterface)) {
         php_error_docref(NULL, E_WARNING, "Interceptor must implement Ray\\Aop\\InterceptedInterface");
         RETURN_FALSE;
