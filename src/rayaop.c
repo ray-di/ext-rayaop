@@ -41,6 +41,7 @@ static zend_class_entry *zend_ce_ray_aop_interceptedinterface;
 static void rayaop_zend_execute_ex(zend_execute_data *execute_data)
 {
     if (is_intercepting) {
+        RAYAOP_DEBUG_PRINT("Already intercepting, calling original zend_execute_ex");
         original_zend_execute_ex(execute_data);
         return;
     }
@@ -54,16 +55,18 @@ static void rayaop_zend_execute_ex(zend_execute_data *execute_data)
         char *key = NULL;
         size_t key_len = 0;
         key_len = spprintf(&key, 0, "%s::%s", ZSTR_VAL(class_name), ZSTR_VAL(method_name));
+        RAYAOP_DEBUG_PRINT("Generated key: %s", key);
 
         intercept_info *info = NULL;
-        if (zend_hash_str_find_ptr(intercept_ht, key, key_len) != NULL) {
-            info = zend_hash_str_find_ptr(intercept_ht, key, key_len);
+        if ((info = zend_hash_str_find_ptr(intercept_ht, key, key_len)) != NULL) {
+            RAYAOP_DEBUG_PRINT("Found intercept info for key: %s", key);
             efree(key);
 
             if (info && Z_TYPE(info->handler) == IS_OBJECT) {
                 zval retval, params[3];
 
                 if (execute_data->This.value.obj == NULL) {
+                    RAYAOP_DEBUG_PRINT("execute_data->This.value.obj is NULL, calling original zend_execute_ex");
                     original_zend_execute_ex(execute_data);
                     return;
                 }
@@ -102,6 +105,7 @@ static void rayaop_zend_execute_ex(zend_execute_data *execute_data)
                 return;
             }
         } else {
+            RAYAOP_DEBUG_PRINT("No intercept info found for key: %s", key);
             efree(key);
         }
     }
@@ -150,11 +154,10 @@ PHP_FUNCTION(method_intercept)
     char *key = NULL;
     size_t key_len = 0;
     key_len = spprintf(&key, 0, "%s::%s", class_name, method_name);
+    RAYAOP_DEBUG_PRINT("Registered intercept info for key: %s", key);
 
     zend_hash_str_update_ptr(intercept_ht, key, key_len, new_info);
     efree(key);
-
-    RAYAOP_DEBUG_PRINT("Registered interceptor for %s::%s", class_name, method_name);
 
     RETURN_TRUE;
 }
