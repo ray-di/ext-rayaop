@@ -72,53 +72,90 @@ static void dump_zval(zval *val)
     }
 }
 
-static void free_intercept_info(zval *zv)
-{
-    intercept_info *info = Z_PTR_P(zv);
-    if (info) {
-        RAYAOP_DEBUG_PRINT("Freeing intercept info for %s::%s", ZSTR_VAL(info->class_name), ZSTR_VAL(info->method_name));
+static void check_heap_integrity(const char *location) {
+    RAYAOP_DEBUG_PRINT("Checking heap integrity at %s", location);
+    // ここにヒープ整合性チェックのロジックを実装
+    // 例: zend_mm_check_heapのような内部関数を使用（利用可能な場合）
+    // 注意: この関数の実際の実装はPHPのバージョンや利用可能なAPIに依存します
+}
 
-        if (info->class_name) {
-            RAYAOP_DEBUG_PRINT("Before releasing class_name: %s", ZSTR_VAL(info->class_name));
-            dump_zend_string(info->class_name);
-            RAYAOP_DEBUG_PRINT("class_name refcount: %d, persistent: %d", GC_REFCOUNT(info->class_name), GC_FLAGS(info->class_name) & IS_STR_PERSISTENT);
-            if (!ZSTR_IS_INTERNED(info->class_name)) {
-                // zend_string_release(info->class_name);  // 一時的にコメントアウト
-                RAYAOP_DEBUG_PRINT("After releasing class_name");
-            } else {
-                RAYAOP_DEBUG_PRINT("class_name is interned: %s", ZSTR_VAL(info->class_name));
-            }
-            info->class_name = NULL;
+static void safe_zend_string_release(zend_string **str_ptr) {
+    if (str_ptr && *str_ptr) {
+        RAYAOP_DEBUG_PRINT("Releasing zend_string: %s", ZSTR_VAL(*str_ptr));
+        RAYAOP_DEBUG_PRINT("Refcount before release: %d", GC_REFCOUNT(*str_ptr));
+        RAYAOP_DEBUG_PRINT("Is persistent: %d", GC_FLAGS(*str_ptr) & IS_STR_PERSISTENT);
+        RAYAOP_DEBUG_PRINT("Is interned: %d", ZSTR_IS_INTERNED(*str_ptr));
+
+        dump_zend_string(*str_ptr);
+
+        check_heap_integrity("Before zend_string_release");
+
+        if (!ZSTR_IS_INTERNED(*str_ptr) && GC_REFCOUNT(*str_ptr) > 0) {
+            RAYAOP_DEBUG_PRINT("Memory content before release:");
+            dump_memory(*str_ptr, sizeof(zend_string) + ZSTR_LEN(*str_ptr) + 1);
+
+            zend_string_release(*str_ptr);
+            *str_ptr = NULL;
+            RAYAOP_DEBUG_PRINT("zend_string released and nullified");
+        } else if (ZSTR_IS_INTERNED(*str_ptr)) {
+            RAYAOP_DEBUG_PRINT("Skipping release for interned string");
+            *str_ptr = NULL;
+        } else {
+            RAYAOP_DEBUG_PRINT("Skipping release for string with refcount <= 0");
+            *str_ptr = NULL;
         }
 
-        if (info->method_name) {
-            RAYAOP_DEBUG_PRINT("Before releasing method_name: %s", ZSTR_VAL(info->method_name));
-            dump_zend_string(info->method_name);
-            RAYAOP_DEBUG_PRINT("method_name refcount: %d, persistent: %d", GC_REFCOUNT(info->method_name), GC_FLAGS(info->method_name) & IS_STR_PERSISTENT);
-            if (!ZSTR_IS_INTERNED(info->method_name)) {
-                RAYAOP_DEBUG_PRINT("Releasing method_name");
-                // zend_string_release(info->method_name);  // 一時的にコメントアウト
-                RAYAOP_DEBUG_PRINT("After releasing method_name");
-            } else {
-                RAYAOP_DEBUG_PRINT("method_name is interned: %s", ZSTR_VAL(info->method_name));
-            }
-            info->method_name = NULL;
-        }
-
-        RAYAOP_DEBUG_PRINT("Releasing handler");
-        RAYAOP_DEBUG_PRINT("Before zval_ptr_dtor handler");
-        dump_zval(&info->handler);
-        zval_ptr_dtor(&info->handler);
-        RAYAOP_DEBUG_PRINT("After zval_ptr_dtor handler");
-
-        RAYAOP_DEBUG_PRINT("Before freeing info struct");
-        dump_memory(info, sizeof(*info));
-        efree(info);
-        RAYAOP_DEBUG_PRINT("After freeing info struct");
-        RAYAOP_DEBUG_PRINT("Memory freed for intercept info");
+        check_heap_integrity("After zend_string_release");
+    } else {
+        RAYAOP_DEBUG_PRINT("Attempted to release NULL zend_string");
     }
 }
 
+static void free_intercept_info(zval *zv)
+{
+    RAYAOP_DEBUG_PRINT("Entering free_intercept_info");
+    check_heap_integrity("Start of free_intercept_info");
+
+    intercept_info *info = Z_PTR_P(zv);
+    if (info) {
+        RAYAOP_DEBUG_PRINT("Freeing intercept info for %s::%s",
+            info->class_name ? ZSTR_VAL(info->class_name) : "NULL",
+            info->method_name ? ZSTR_VAL(info->method_name) : "NULL");
+
+        if (info->class_name) {
+            RAYAOP_DEBUG_PRINT("class_name before release:");
+            dump_zend_string(info->class_name);
+            RAYAOP_DEBUG_PRINT("Memory around class_name:");
+            dump_memory((char*)info->class_name - 16, sizeof(zend_string) + ZSTR_LEN(info->class_name) + 32);
+            RAYAOP_DEBUG_PRINT("class_name refcount: %d", GC_REFCOUNT(info->class_name));
+        }
+        check_heap_integrity("Before releasing class_name");
+        safe_zend_string_release(&info->class_name);
+        check_heap_integrity("After releasing class_name");
+
+        if (info->method_name) {
+            RAYAOP_DEBUG_PRINT("method_name before release:");
+            dump_zend_string(info->method_name);
+            RAYAOP_DEBUG_PRINT("Memory around method_name:");
+            dump_memory((char*)info->method_name - 16, sizeof(zend_string) + ZSTR_LEN(info->method_name) + 32);
+            RAYAOP_DEBUG_PRINT("method_name refcount: %d", GC_REFCOUNT(info->method_name));
+        }
+        check_heap_integrity("Before releasing method_name");
+        safe_zend_string_release(&info->method_name);
+        check_heap_integrity("After releasing method_name");
+
+        RAYAOP_DEBUG_PRINT("Releasing handler");
+        zval_ptr_dtor(&info->handler);
+
+        RAYAOP_DEBUG_PRINT("Freeing info struct");
+        dump_memory(info, sizeof(*info));
+        efree(info);
+        RAYAOP_DEBUG_PRINT("Memory freed for intercept info");
+    }
+
+    check_heap_integrity("End of free_intercept_info");
+    RAYAOP_DEBUG_PRINT("Exiting free_intercept_info");
+}
 
 static void rayaop_zend_execute_ex(zend_execute_data *execute_data)
 {
@@ -149,7 +186,7 @@ static void rayaop_zend_execute_ex(zend_execute_data *execute_data)
 
                 if (!Z_OBJ(execute_data->This)) {
                     RAYAOP_DEBUG_PRINT("execute_data->This is not an object, calling original zend_execute_ex");
-                    zend_string_release(key);
+                    safe_zend_string_release(&key);
                     original_zend_execute_ex(execute_data);
                     return;
                 }
@@ -186,19 +223,36 @@ static void rayaop_zend_execute_ex(zend_execute_data *execute_data)
                 zval_ptr_dtor(&params[2]);
 
                 is_intercepting = 0;
-                zend_string_release(key);
+                safe_zend_string_release(&key);
                 return;
             }
-
-            zend_string_release(key);  // 解放処理が必要な場合はここでも行う
         } else {
             RAYAOP_DEBUG_PRINT("No intercept info found for key: %s", ZSTR_VAL(key));
         }
 
-        zend_string_release(key);  // 情報が見つからなかった場合も key を解放
+        safe_zend_string_release(&key);
     }
 
     original_zend_execute_ex(execute_data);
+}
+
+static int dump_intercept_info(zval *zv, void *arg)
+{
+    intercept_info *info = Z_PTR_P(zv);
+    if (info) {
+        RAYAOP_DEBUG_PRINT("Intercept info:");
+        RAYAOP_DEBUG_PRINT("  class_name: %s", info->class_name ? ZSTR_VAL(info->class_name) : "NULL");
+        RAYAOP_DEBUG_PRINT("  method_name: %s", info->method_name ? ZSTR_VAL(info->method_name) : "NULL");
+        RAYAOP_DEBUG_PRINT("  handler type: %d", Z_TYPE(info->handler));
+
+        if (info->class_name) {
+            dump_zend_string(info->class_name);
+        }
+        if (info->method_name) {
+            dump_zend_string(info->method_name);
+        }
+    }
+    return ZEND_HASH_APPLY_KEEP;
 }
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_method_intercept, 0, 0, 3)
@@ -239,7 +293,7 @@ PHP_FUNCTION(method_intercept)
     RAYAOP_DEBUG_PRINT("Registered intercept info for key: %s", ZSTR_VAL(key));
 
     zend_hash_update_ptr(intercept_ht, key, new_info);
-    //zend_string_release(key);
+    safe_zend_string_release(&key);
 
     RETURN_TRUE;
 }
@@ -270,11 +324,16 @@ PHP_MSHUTDOWN_FUNCTION(rayaop)
 
     if (intercept_ht) {
         RAYAOP_DEBUG_PRINT("Destroying intercept_ht");
+        RAYAOP_DEBUG_PRINT("intercept_ht contents before destruction:");
+        zend_hash_apply_with_argument(intercept_ht, (apply_func_arg_t) dump_intercept_info, NULL);
+
         zend_hash_destroy(intercept_ht);
         RAYAOP_DEBUG_PRINT("Destroyed intercept_ht");
         pefree(intercept_ht, 1);
         intercept_ht = NULL;
         RAYAOP_DEBUG_PRINT("Intercept hash table destroyed and freed");
+    } else {
+        RAYAOP_DEBUG_PRINT("intercept_ht is already NULL");
     }
 
     RAYAOP_DEBUG_PRINT("RayAOP extension shut down");
