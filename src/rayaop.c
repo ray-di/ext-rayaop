@@ -81,7 +81,7 @@ static void free_intercept_info(zval *zv)
             RAYAOP_DEBUG_PRINT("Before releasing class_name: %s", ZSTR_VAL(info->class_name));
             dump_zend_string(info->class_name);
             if (!ZSTR_IS_INTERNED(info->class_name)) {
-                // zend_string_release(info->class_name);  // 一時的にコメントアウト
+                zend_string_release(info->class_name);
                 RAYAOP_DEBUG_PRINT("After releasing class_name");
             } else {
                 RAYAOP_DEBUG_PRINT("class_name is interned: %s", ZSTR_VAL(info->class_name));
@@ -93,7 +93,7 @@ static void free_intercept_info(zval *zv)
             RAYAOP_DEBUG_PRINT("Before releasing method_name: %s", ZSTR_VAL(info->method_name));
             dump_zend_string(info->method_name);
             if (!ZSTR_IS_INTERNED(info->method_name)) {
-                // zend_string_release(info->method_name);  // 一時的にコメントアウト
+                zend_string_release(info->method_name);
                 RAYAOP_DEBUG_PRINT("After releasing method_name");
             } else {
                 RAYAOP_DEBUG_PRINT("method_name is interned: %s", ZSTR_VAL(info->method_name));
@@ -144,7 +144,7 @@ static void rayaop_zend_execute_ex(zend_execute_data *execute_data)
 
                 if (!Z_OBJ(execute_data->This)) {
                     RAYAOP_DEBUG_PRINT("execute_data->This is not an object, calling original zend_execute_ex");
-                    // zend_string_release(key);
+                    zend_string_release(key);
                     original_zend_execute_ex(execute_data);
                     return;
                 }
@@ -181,14 +181,14 @@ static void rayaop_zend_execute_ex(zend_execute_data *execute_data)
                 zval_ptr_dtor(&params[2]);
 
                 is_intercepting = 0;
-                // zend_string_release(key);
+                zend_string_release(key);
                 return;
             }
         } else {
             RAYAOP_DEBUG_PRINT("No intercept info found for key: %s", ZSTR_VAL(key));
         }
 
-        // zend_string_release(key);
+        zend_string_release(key);
     }
 
     original_zend_execute_ex(execute_data);
