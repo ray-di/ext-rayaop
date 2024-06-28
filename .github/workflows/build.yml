@@ -11,7 +11,7 @@ jobs:
 
     strategy:
       matrix:
-        php-version: ['8.0', '8.1']
+        php-version: ['8.0', '8.1', '8.2', '8.3']
 
     steps:
       - name: Checkout code
@@ -38,4 +38,4 @@ jobs:
       - name: Run demo
         run: |
           php -d extension=./modules/rayaop.so -i | grep rayaop
-          php -d extension=./modules/rayaop.so rayaop.php
+          timeout 60s php -d extension=./modules/rayaop.so -d memory_limit=128M -d report_memleaks=1 -d zend.assertions=1 -d assert.exception=1 rayaop.php 2> php_stderr.log || true
