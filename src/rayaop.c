@@ -182,8 +182,8 @@ static int efree_intercept_info(zval *zv)
     if (info) {
         RAYAOP_DEBUG_PRINT("Freeing intercept info for %s::%s", ZSTR_VAL(info->class_name), ZSTR_VAL(info->method_name));
 
-        zend_string_release(info->class_name);  // クラス名を解放
-        zend_string_release(info->method_name);  // メソッド名を解放
+        // zend_string_release(info->class_name);  // クラス名を解放 *SHOULD_BE_REMOVED*
+        // zend_string_release(info->method_name);  // メソッド名を解放 *SHOULD_BE_REMOVED*
 
         RAYAOP_DEBUG_PRINT("class_name and method_name released");
 
