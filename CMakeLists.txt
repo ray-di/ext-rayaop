@@ -10,9 +10,6 @@ project(rayaop C)
 # link https://cmake.org/cmake/help/latest/command/add_compile_definitions.html
 add_compile_definitions(HAVE_RAYAOP)
 
-# ソースファイルのリストを指定
-# link https://cmake.org/cmake/help/latest/command/set.html
-set(SOURCE_FILES php_rayaop rayaop.c)
 
 # `php-config` コマンドを使ってPHPのインクルードディレクトリを取得
 # link https://cmake.org/cmake/help/latest/command/execute_process.html
@@ -45,6 +42,16 @@ add_custom_target(configure
         DEPENDS ${SOURCE_FILES}
         WORKING_DIRECTORY ${PROJECT_SOURCE_DIR})
 
+# ソースファイルのリストを指定
+# link https://cmake.org/cmake/help/latest/command/set.html
+set(SOURCE_FILES php_rayaop.h rayaop.c)
+
 # ソースファイルからライブラリを作成（ただし、ALLビルドからは除外）
 # link https://cmake.org/cmake/help/latest/command/add_library.html
 add_library(___ EXCLUDE_FROM_ALL ${SOURCE_FILES})
+
+# CMakeの CMP0115 ポリシーの振る舞いを設定。新しいポリシーでは、ソースファイルが存在しない場合でも
+# add_executable() または add_library() を実行しますが、生成されたビルドがそのファイルを見つけられない場合にはエラーを生成します。
+# link https://cmake.org/cmake/help/latest/policy/CMP0115.html
+cmake_policy(SET CMP0115 NEW)
+
