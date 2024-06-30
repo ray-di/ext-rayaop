@@ -30,3 +30,4 @@
 # Ignore directories and its content
 /Makefile.fragments
 /Makefile.objects
+/cmake-build-debug
