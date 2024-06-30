@@ -13,7 +13,7 @@
 #include "TSRM.h"  // スレッドセーフリソース管理ヘッダー
 #endif
 
-//#define RAYAOP_DEBUG  // デバッグ用の定義
+//#define RAYAOP_DEBUG
 
 /**
  * インターセプト情報を保持する構造体
