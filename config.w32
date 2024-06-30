@@ -1,0 +1,10 @@
+// $Id$
+// vim:ft=javascript
+
+ARG_ENABLE("rayaop", "enable rayaop", "no");
+
+if (PHP_RAYAOP != "no") {
+	EXTENSION("rayaop", "rayaop.c");
+	AC_DEFINE('HAVE_RAYAOP', 1 , 'whether rayaop is enabled');
+	PHP_INSTALL_HEADERS("ext/rayaop/", "php_rayaop.h");
+}
