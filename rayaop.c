@@ -18,8 +18,8 @@
 
 /**
  * インターセプト情報を保持する構造体
- * @link https://www.phpinternalsbook.com/php5/classes_objects/internal_structures_and_implementation.html
- * @link http://php.adamharvey.name/manual/ja/internals2.variables.tables.php
+ * link: http//://www.phpinternalsbook.com/php5/classes_objects/internal_structures_and_implementation.html
+ * link: http://php.adamharvey.name/manual/ja/internals2.variables.tables.php
  */
 typedef struct _intercept_info {
     zend_string *class_name;     // インターセプト対象のクラス名
@@ -67,7 +67,7 @@ static void rayaop_zend_execute_ex(zend_execute_data *execute_data)
         zend_string *method_name = current_function->common.function_name;  // メソッド名を取得
 
         char *key = NULL;  // ハッシュキー用の文字列ポインタ
-        size_t key_len = 0;  // ハッシュキーの長さ
+        size_t key_len;  // ハッシュキーの長さ
         key_len = spprintf(&key, 0, "%s::%s", ZSTR_VAL(class_name), ZSTR_VAL(method_name));  // ハッシュキーを生成
         RAYAOP_DEBUG_PRINT("Generated key: %s", key);
 
@@ -140,7 +140,7 @@ ZEND_END_ARG_INFO()
 
 /**
  * インターセプトメソッドを登録する関数
- * @link https://www.phpinternalsbook.com/php7/extensions_design/php_functions.html
+ * link: https://www.phpinternalsbook.com/php7/extensions_design/php_functions.html
  */
 PHP_FUNCTION(method_intercept)
 {
@@ -169,8 +169,7 @@ PHP_FUNCTION(method_intercept)
     RAYAOP_DEBUG_PRINT("Initialized intercept_info for %s::%s", class_name, method_name);
 
     char *key = NULL;  // ハッシュキー用の文字列ポインタ
-    size_t key_len = 0;  // ハッシュキーの長さ
-    key_len = spprintf(&key, 0, "%s::%s", class_name, method_name);  // ハッシュキーを生成
+    size_t key_len = spprintf(&key, 0, "%s::%s", class_name, method_name);  // ハッシュキーを生成
     RAYAOP_DEBUG_PRINT("Generated key: %s", key);
 
     if (zend_hash_str_update_ptr(intercept_ht, key, key_len, new_info) == NULL) {
@@ -190,9 +189,9 @@ PHP_FUNCTION(method_intercept)
 
 /**
  * インターセプト情報を解放する関数
- * @link https://www.phpinternalsbook.com/php7/internal_types/strings/zend_strings.html
+ * link: https://www.phpinternalsbook.com/php7/internal_types/strings/zend_strings.html
  */
-static int efree_intercept_info(zval *zv)
+static void efree_intercept_info(zval *zv)
 {
     intercept_info *info = Z_PTR_P(zv);  // インターセプト情報を取得
     if (info) {
@@ -212,7 +211,7 @@ static int efree_intercept_info(zval *zv)
 
 /**
  * 拡張機能の初期化関数
- * @link https://www.phpinternalsbook.com/php7/extensions_design/hooks.html
+ * link: https://www.phpinternalsbook.com/php7/extensions_design/hooks.html
  */
 PHP_MINIT_FUNCTION(rayaop)
 {
@@ -234,7 +233,7 @@ PHP_MINIT_FUNCTION(rayaop)
 
 /**
  * 拡張機能のシャットダウン関数
- * @link https://www.phpinternalsbook.com/php7/extensions_design/hooks.html
+ * link: https://www.phpinternalsbook.com/php7/extensions_design/hooks.html
  */
 PHP_MSHUTDOWN_FUNCTION(rayaop)
 {
@@ -254,7 +253,7 @@ PHP_MSHUTDOWN_FUNCTION(rayaop)
 
 /**
  * 拡張機能の情報表示関数
- * @link https://www.phpinternalsbook.com/php7/extensions_design/extension_infos.html
+ * link: https://www.phpinternalsbook.com/php7/extensions_design/extension_infos.html
  */
 PHP_MINFO_FUNCTION(rayaop)
 {
@@ -272,7 +271,7 @@ static const zend_function_entry rayaop_functions[] = {
 };
 
 // 拡張機能のモジュールエントリ
-// @link https://www.phpinternalsbook.com/php7/extensions_design/extension_infos.html
+// link https://www.phpinternalsbook.com/php7/extensions_design/extension_infos.html
 zend_module_entry rayaop_module_entry = {
     STANDARD_MODULE_HEADER,
     "rayaop",  // 拡張機能の名前
