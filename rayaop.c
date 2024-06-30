@@ -103,10 +103,10 @@ static void rayaop_zend_execute_ex(zend_execute_data *execute_data)
                     if (!Z_ISUNDEF(retval)) {
                         ZVAL_COPY(execute_data->return_value, &retval);  // 戻り値を設定
                     }
-                    zval_ptr_dtor(&retval);  // 戻り値のデストラクタを呼ぶ
                 } else {
                     php_error_docref(NULL, E_WARNING, "Interception failed for %s::%s", ZSTR_VAL(class_name), ZSTR_VAL(method_name));
                 }
+                zval_ptr_dtor(&retval); // 成功時と失敗時の両方で retval を解放
 
                 zval_ptr_dtor(&func_name);  // メソッド名のデストラクタを呼ぶ
                 zval_ptr_dtor(&params[1]);  // メソッド名のデストラクタを呼ぶ
@@ -193,7 +193,6 @@ static int efree_intercept_info(zval *zv)
         efree(info);  // インターセプト情報構造体を解放
         RAYAOP_DEBUG_PRINT("Memory freed for intercept info");
     }
-    return ZEND_HASH_APPLY_REMOVE;  // ハッシュテーブルからエントリを削除
 }
 
 /**
@@ -208,7 +207,7 @@ PHP_MINIT_FUNCTION(rayaop)
     zend_execute_ex = rayaop_zend_execute_ex;  // カスタムzend_execute_ex関数を設定
 
     intercept_ht = pemalloc(sizeof(HashTable), 1);  // ハッシュテーブルを確保
-    zend_hash_init(intercept_ht, 8, NULL, NULL, 1);  // ハッシュテーブルを初期化
+    zend_hash_init(intercept_ht, 8, NULL, efree_intercept_info, 1);  // ハッシュテーブルを初期化
 
     RAYAOP_DEBUG_PRINT("RayAOP extension initialized");
     return SUCCESS;  // 初期化成功
