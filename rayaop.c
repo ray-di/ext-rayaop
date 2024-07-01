@@ -220,12 +220,12 @@ PHP_MINIT_FUNCTION(rayaop)
     original_zend_execute_ex = zend_execute_ex;  // 元のzend_execute_ex関数を保存
     zend_execute_ex = rayaop_zend_execute_ex;  // カスタムzend_execute_ex関数を設定
 
-    intercept_ht = pemalloc(sizeof(HashTable), 1);  // ハッシュテーブルを確保
+    intercept_ht = pemalloc(sizeof(HashTable), 0);  // ハッシュテーブルを確保
     if (!intercept_ht) {
         php_error_docref(NULL, E_ERROR, "Failed to allocate memory for intercept hash table");
         return FAILURE;
     }
-    zend_hash_init(intercept_ht, 8, NULL, (dtor_func_t)efree_intercept_info, 1);  // ハッシュテーブルを初期化
+    zend_hash_init(intercept_ht, 8, NULL, (dtor_func_t)efree_intercept_info, 0);  // ハッシュテーブルを初期化
 
     RAYAOP_DEBUG_PRINT("RayAOP extension initialized");
     return SUCCESS;  // 初期化成功
@@ -242,8 +242,8 @@ PHP_MSHUTDOWN_FUNCTION(rayaop)
     zend_execute_ex = original_zend_execute_ex;  // 元のzend_execute_ex関数を復元
 
     if (intercept_ht) {
-        zend_hash_destroy(intercept_ht);  // ハッシュテーブルを破棄
-        pefree(intercept_ht, 1);  // ハッシュテーブルのメモリを解放
+        // zend_hash_destroy(intercept_ht);  // ハッシュテーブルを破棄
+        pefree(intercept_ht, 0);  // ハッシュテーブルのメモリを解放
         intercept_ht = NULL;  // ハッシュテーブルポインタをNULLに設定
     }
 
