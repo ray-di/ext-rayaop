@@ -38,4 +38,4 @@ jobs:
       - name: Run demo
         run: |
           php -dextension=./modules/rayaop.so -i | grep rayaop
-          timeout 60s php -dextension=./modules/rayaop.so -d memory_limit=128M -d report_memleaks=1 -d zend.assertions=1 -d assert.exception=1 smoke.php
+          timeout 60s php -dextension=./modules/rayaop.so -dmemory_limit=128M -dreport_memleaks=1 -dzend.assertions=1 -dassert.exception=1 smoke.php
