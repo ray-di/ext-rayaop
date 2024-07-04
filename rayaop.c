@@ -220,11 +220,7 @@ PHP_MINIT_FUNCTION(rayaop)
     original_zend_execute_ex = zend_execute_ex;  // 元のzend_execute_ex関数を保存
     zend_execute_ex = rayaop_zend_execute_ex;  // カスタムzend_execute_ex関数を設定
 
-    intercept_ht = pemalloc(sizeof(HashTable), 0);  // ハッシュテーブルを確保
-    if (!intercept_ht) {
-        php_error_docref(NULL, E_ERROR, "Failed to allocate memory for intercept hash table");
-        return FAILURE;
-    }
+    ALLOC_HASHTABLE(intercept_ht); // ハッシュテーブルを確保
     zend_hash_init(intercept_ht, 8, NULL, (dtor_func_t)efree_intercept_info, 0);  // ハッシュテーブルを初期化
 
     RAYAOP_DEBUG_PRINT("RayAOP extension initialized");
@@ -237,17 +233,29 @@ PHP_MINIT_FUNCTION(rayaop)
  */
 PHP_MSHUTDOWN_FUNCTION(rayaop)
 {
-    RAYAOP_DEBUG_PRINT("PHP_MSHUTDOWN_FUNCTION called");
+    RAYAOP_DEBUG_PRINT("RayAOP PHP_MSHUTDOWN_FUNCTION called");
 
     zend_execute_ex = original_zend_execute_ex;  // 元のzend_execute_ex関数を復元
+    original_zend_execute_ex = NULL;
 
+    RAYAOP_DEBUG_PRINT("RayAOP PHP_MSHUTDOWN_FUNCTION shut down");
+    return SUCCESS;  // シャットダウン成功
+}
+
+/**
+ * 拡張機能のリクエストシャットダウン関数
+ * link: https://www.phpinternalsbook.com/php7/extensions_design/hooks.html
+ */
+PHP_RSHUTDOWN_FUNCTION(rayaop)
+{
+    RAYAOP_DEBUG_PRINT("RayAOP PHP_RSHUTDOWN_FUNCTION called");
     if (intercept_ht) {
-        // zend_hash_destroy(intercept_ht);  // ハッシュテーブルを破棄
-        pefree(intercept_ht, 0);  // ハッシュテーブルのメモリを解放
+        zend_hash_destroy(intercept_ht);  // ハッシュテーブルを破棄
+        FREE_HASHTABLE(intercept_ht);  // ハッシュテーブルのメモリを解放
         intercept_ht = NULL;  // ハッシュテーブルポインタをNULLに設定
     }
 
-    RAYAOP_DEBUG_PRINT("RayAOP extension shut down");
+    RAYAOP_DEBUG_PRINT("RayAOP PHP_RSHUTDOWN_FUNCTION shut down");
     return SUCCESS;  // シャットダウン成功
 }
 
@@ -279,7 +287,7 @@ zend_module_entry rayaop_module_entry = {
     PHP_MINIT(rayaop),  // 拡張機能の初期化関数
     PHP_MSHUTDOWN(rayaop),  // 拡張機能のシャットダウン関数
     NULL,  // リクエスト開始時の関数（未使用）
-    NULL,  // リクエスト終了時の関数（未使用）
+    PHP_MSHUTDOWN(rayaop),  // リクエスト終了時の関数（未使用）
     PHP_MINFO(rayaop),  // 拡張機能の情報表示関数
     PHP_RAYAOP_VERSION,  // 拡張機能のバージョン
     STANDARD_MODULE_PROPERTIES
