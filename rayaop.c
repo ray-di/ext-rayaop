@@ -14,7 +14,7 @@
 #endif
 
 // デバッグ出力を有効にする場合はこのマクロをアンコメントしてください
-// #define RAYAOP_DEBUG
+#define RAYAOP_DEBUG
 
 /**
  * インターセプト情報を保持する構造体
