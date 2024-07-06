@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+  build-and-test:
     runs-on: ubuntu-latest
 
     strategy:
@@ -23,8 +23,10 @@ jobs:
           php-version: ${{ matrix.php-version }}
           extensions: mbstring, intl
 
-      - name: Install build tools
-        run: sudo apt-get update && sudo apt-get install -y autoconf automake libtool bison re2c
+      - name: Install build tools and Valgrind
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y autoconf automake libtool bison re2c valgrind
 
       - name: Prepare build
         run: |
@@ -33,9 +35,69 @@ jobs:
           make
 
       - name: Run tests
+        id: run_tests
         run: make test
+        continue-on-error: true
 
-      - name: Run demo
+      - name: Run demo with debug logging
+        id: run_demo
         run: |
           php -dextension=./modules/rayaop.so -i | grep rayaop
-          timeout 60s php -dextension=./modules/rayaop.so -dmemory_limit=128M -dreport_memleaks=1 -dzend.assertions=1 -dassert.exception=1 smoke.php
+          timeout 60s php -n -dextension=./modules/rayaop.so -dmemory_limit=128M -dreport_memleaks=1 -dzend.assertions=1 -dassert.exception=1 smoke.php
+        continue-on-error: true
+
+      - name: Run Valgrind memory check
+        if: steps.run_tests.outcome == 'failure' || steps.run_demo.outcome == 'failure'
+        run: |
+          cat << EOF > valgrind.supp
+          {
+             <insert_a_suppression_name_here>
+             Memcheck:Leak
+             match-leak-kinds: reachable
+             ...
+             fun:php_module_startup
+             ...
+          }
+          EOF
+          valgrind --suppressions=valgrind.supp --leak-check=full --show-leak-kinds=all --track-origins=yes --verbose --log-file=valgrind-out.txt php -n -dextension=./modules/rayaop.so smoke.php
+
+      - name: Check Valgrind results
+        if: steps.run_tests.outcome == 'failure' || steps.run_demo.outcome == 'failure'
+        run: |
+          if [ -f valgrind-out.txt ]; then
+            echo "Valgrind log found:"
+            cat valgrind-out.txt
+            if ! grep -q "ERROR SUMMARY: 0 errors from 0 contexts" valgrind-out.txt; then
+              echo "Valgrind found errors"
+              exit 1
+            fi
+          else
+            echo "Valgrind log not found. This is unexpected."
+            exit 1
+          fi
+
+      - name: Upload Valgrind log file
+        if: (steps.run_tests.outcome == 'failure' || steps.run_demo.outcome == 'failure') && always()
+        uses: actions/upload-artifact@v2
+        with:
+          name: valgrind-log
+          path: valgrind-out.txt
+          if-no-files-found: warn
+
+      - name: Upload test logs
+        if: failure()
+        uses: actions/upload-artifact@v2
+        with:
+          name: test-logs
+          path: |
+            tests/*.log
+            tests/*.sh
+          if-no-files-found: warn
+
+      - name: Final status check
+        if: always()
+        run: |
+          if [ "${{ steps.run_tests.outcome }}" == "failure" ] || [ "${{ steps.run_demo.outcome }}" == "failure" ]; then
+            echo "Tests or demo run failed. Please check the logs for more information."
+            exit 1
+          fi
