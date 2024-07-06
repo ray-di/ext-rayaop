@@ -7,8 +7,8 @@ Ray.Aop is a PECL extension that provides Aspect-Oriented Programming (AOP) capa
 1. **Interception Mechanism**:
    The `intercept` method of the specified intercept handler is called at runtime for designated classes and methods.
 
-2. **Intercept Handlers**:
-   Intercept handlers are used to insert custom logic before and after method execution.
+   2. **Intercept Handlers**:
+      Intercept handlers are used to insert custom logic before and after method execution.
 
 #### Interface
 
@@ -17,8 +17,8 @@ Ray.Aop is a PECL extension that provides Aspect-Oriented Programming (AOP) capa
 Ray.Aop provides an interface for managing interception. This interface should be implemented by PHP users to insert custom logic for specific classes and methods.
 
 - **Namespace**: `Ray\Aop`
-- **Method**:
-    - `intercept(object $object, string $method, array $params): mixed`
+  - **Method**:
+      - `intercept(object $object, string $method, array $params): mixed`
 
 #### Function
 
@@ -26,11 +26,11 @@ Ray.Aop provides an interface for managing interception. This interface should b
 Registers an intercept handler for the specified class and method.
 
 - **Function Name**: `method_intercept`
-- **Parameters**:
-    - `string $className`: Target class name
-    - `string $methodName`: Target method name
-    - `Ray\Aop\MethodInterceptorInterface $handler`: Intercept handler to register
-- **Return Value**: `bool` (true if registration is successful, false if it fails)
+  - **Parameters**:
+      - `string $className`: Target class name
+      - `string $methodName`: Target method name
+      - `Ray\Aop\MethodInterceptorInterface $handler`: Intercept handler to register
+  - **Return Value**: `bool` (true if registration is successful, false if it fails)
 
 #### Usage
 
@@ -117,7 +117,7 @@ $myObject->myMethod(); // This call will trigger the interceptor
 #### Important Notes
 
 - The intercept handler is executed every time the target method is called.
-- If multiple intercept handlers are registered for the same method, only the last registered one will be effective.
-- When calling the original method within an intercept handler, always use `call_user_func_array` or `call_user_func`.
-- The extension does not currently support method invocation chaining or multiple interceptors per method.
-- Interceptors are applied globally and affect all instances of the intercepted class.
+  - If multiple intercept handlers are registered for the same method, only the last registered one will be effective.
+  - When calling the original method within an intercept handler, always use `call_user_func_array` or `call_user_func`.
+  - The extension does not currently support method invocation chaining or multiple interceptors per method.
+  - Interceptors are applied globally and affect all instances of the intercepted class.
