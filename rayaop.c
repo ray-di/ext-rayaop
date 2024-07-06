@@ -4,10 +4,6 @@
 
 #include "php_rayaop.h"
 
-// エラー定数の定義
-#define RAYAOP_ERROR_MEMORY_ALLOCATION 1
-#define RAYAOP_ERROR_HASH_UPDATE 2
-
 // モジュールグローバル変数の宣言
 ZEND_DECLARE_MODULE_GLOBALS(rayaop)
 
@@ -37,17 +33,8 @@ ZEND_END_ARG_INFO()
 
 // ユーティリティ関数の実装
 
-void rayaop_handle_error(int error_code, const char *message) {
-    switch (error_code) {
-        case RAYAOP_ERROR_MEMORY_ALLOCATION:
-            php_error_docref(NULL, E_ERROR, "Memory allocation failed: %s", message);
-            break;
-        case RAYAOP_ERROR_HASH_UPDATE:
-            php_error_docref(NULL, E_ERROR, "Failed to update hash table: %s", message);
-            break;
-        default:
-            php_error_docref(NULL, E_ERROR, "Unknown error: %s", message);
-    }
+void rayaop_handle_error(const char *message) {
+    php_error_docref(NULL, E_ERROR, "Memory error: %s", message);
 }
 
 bool rayaop_should_intercept(zend_execute_data *execute_data) {
@@ -156,6 +143,15 @@ static void rayaop_zend_execute_ex(zend_execute_data *execute_data) {
     efree(key);
 }
 
+void hash_update_failed(intercept_info *new_info, char *key) {
+    rayaop_handle_error("Failed to update intercept hash table");
+    zend_string_release(new_info->class_name);
+    zend_string_release(new_info->method_name);
+    zval_ptr_dtor(&new_info->handler);
+    efree(new_info);
+    efree(key);
+}
+
 /**
  * インターセプトメソッドを登録する関数
  * link: https://www.phpinternalsbook.com/php7/extensions_design/php_functions.html
@@ -175,7 +171,7 @@ PHP_FUNCTION(method_intercept) {
 
     intercept_info *new_info = ecalloc(1, sizeof(intercept_info));
     if (!new_info) {
-        rayaop_handle_error(RAYAOP_ERROR_MEMORY_ALLOCATION, "Failed to allocate memory for intercept_info");
+        rayaop_handle_error("Failed to allocate memory for intercept_info");
         RETURN_FALSE;
     }
 
@@ -187,12 +183,7 @@ PHP_FUNCTION(method_intercept) {
     size_t key_len = spprintf(&key, 0, "%s::%s", class_name, method_name);
 
     if (zend_hash_str_update_ptr(RAYAOP_G(intercept_ht), key, key_len, new_info) == NULL) {
-        rayaop_handle_error(RAYAOP_ERROR_HASH_UPDATE, "Failed to update intercept hash table");
-        zend_string_release(new_info->class_name);
-        zend_string_release(new_info->method_name);
-        zval_ptr_dtor(&new_info->handler);
-        efree(new_info);
-        efree(key);
+        hash_update_failed(new_info, key);
         RETURN_FALSE;
     }
 

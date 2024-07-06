@@ -65,7 +65,7 @@ PHP_MINFO_FUNCTION(rayaop);
 PHP_FUNCTION(method_intercept);
 
 // ユーティリティ関数の宣言
-void rayaop_handle_error(int error_code, const char *message);
+void rayaop_handle_error(const char *message);
 bool rayaop_should_intercept(zend_execute_data *execute_data);
 char* rayaop_generate_intercept_key(zend_string *class_name, zend_string *method_name, size_t *key_len);
 intercept_info* rayaop_find_intercept_info(const char *key, size_t key_len);
