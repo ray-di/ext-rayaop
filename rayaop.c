@@ -4,6 +4,10 @@
 
 #include "php_rayaop.h"
 
+// エラー定数の定義
+#define RAYAOP_ERROR_MEMORY_ALLOCATION 1
+#define RAYAOP_ERROR_HASH_UPDATE 2
+
 // モジュールグローバル変数の宣言
 ZEND_DECLARE_MODULE_GLOBALS(rayaop)
 
@@ -16,8 +20,6 @@ static void php_rayaop_init_globals(zend_rayaop_globals *rayaop_globals)
     rayaop_globals->intercept_ht = NULL;
     rayaop_globals->is_intercepting = 0;
 }
-
-static void (*original_zend_execute_ex)(zend_execute_data *execute_data);
 
 // デバッグ出力用マクロ
 #ifdef RAYAOP_DEBUG
@@ -32,32 +34,6 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_method_intercept, 0, 0, 3)
     ZEND_ARG_TYPE_INFO(0, method_name, IS_STRING, 0)  // メソッド名の引数情報
     ZEND_ARG_OBJ_INFO(0, interceptor, Ray\\Aop\\MethodInterceptorInterface, 0)  // インターセプトハンドラーの引数情報
 ZEND_END_ARG_INFO()
-
-// 拡張機能が提供する関数の定義
-// https://www.phpinternalsbook.com/php7/extensions_design/php_functions.html
-static const zend_function_entry rayaop_functions[] = {
-    PHP_FE(method_intercept, arginfo_method_intercept)  // method_intercept関数の登録
-    PHP_FE_END  // 関数エントリの終了
-};
-
-// 拡張機能のモジュールエントリ
-// link https://www.phpinternalsbook.com/php7/extensions_design/extension_infos.html
-zend_module_entry rayaop_module_entry = {
-    STANDARD_MODULE_HEADER,
-    "rayaop",  // 拡張機能の名前
-    rayaop_functions,  // 拡張機能が提供する関数
-    PHP_MINIT(rayaop),  // 拡張機能の初期化関数
-    PHP_MSHUTDOWN(rayaop),  // 拡張機能のシャットダウン関数
-    PHP_RINIT(rayaop),  // リクエスト開始時の関数
-    PHP_RSHUTDOWN(rayaop),  // リクエスト終了時の関数
-    PHP_MINFO(rayaop),  // 拡張機能の情報表示関数
-    PHP_RAYAOP_VERSION,  // 拡張機能のバージョン
-    STANDARD_MODULE_PROPERTIES
-};
-
-#ifdef COMPILE_DL_RAYAOP
-ZEND_GET_MODULE(rayaop)
-#endif
 
 // ユーティリティ関数の実装
 
@@ -300,47 +276,11 @@ PHP_RSHUTDOWN_FUNCTION(rayaop)
  */
 PHP_MINFO_FUNCTION(rayaop)
 {
-php_info_print_table_start();  // 情報テーブルの開始
+    php_info_print_table_start();  // 情報テーブルの開始
     php_info_print_table_header(2, "rayaop support", "enabled");  // テーブルヘッダーの表示
     php_info_print_table_row(2, "Version", PHP_RAYAOP_VERSION);  // バージョン情報の表示
     php_info_print_table_end();  // 情報テーブルの終了
 }
-
-// 例: デバッグ用のヘルパー関数
-#ifdef RAYAOP_DEBUG
-static void rayaop_debug_print_zval(zval *value)
-{
-    switch (Z_TYPE_P(value)) {
-        case IS_NULL:
-            RAYAOP_DEBUG_PRINT("(null)");
-            break;
-        case IS_TRUE:
-            RAYAOP_DEBUG_PRINT("(bool) true");
-            break;
-        case IS_FALSE:
-            RAYAOP_DEBUG_PRINT("(bool) false");
-            break;
-        case IS_LONG:
-            RAYAOP_DEBUG_PRINT("(int) %ld", Z_LVAL_P(value));
-            break;
-        case IS_DOUBLE:
-            RAYAOP_DEBUG_PRINT("(float) %f", Z_DVAL_P(value));
-            break;
-        case IS_STRING:
-            RAYAOP_DEBUG_PRINT("(string) %s", Z_STRVAL_P(value));
-            break;
-        case IS_ARRAY:
-            RAYAOP_DEBUG_PRINT("(array)");
-            break;
-        case IS_OBJECT:
-            RAYAOP_DEBUG_PRINT("(object)");
-            break;
-        default:
-            RAYAOP_DEBUG_PRINT("(unknown type)");
-            break;
-    }
-}
-#endif
 
 // 例: インターセプト情報をダンプする関数
 #ifdef RAYAOP_DEBUG
@@ -362,4 +302,30 @@ static void rayaop_dump_intercept_info(void)
         RAYAOP_DEBUG_PRINT("Intercept hash table is not initialized");
     }
 }
+#endif
+
+// 拡張機能が提供する関数の定義
+// https://www.phpinternalsbook.com/php7/extensions_design/php_functions.html
+static const zend_function_entry rayaop_functions[] = {
+    PHP_FE(method_intercept, arginfo_method_intercept)  // method_intercept関数の登録
+    PHP_FE_END  // 関数エントリの終了
+};
+
+// 拡張機能のモジュールエントリ
+// link https://www.phpinternalsbook.com/php7/extensions_design/extension_infos.html
+zend_module_entry rayaop_module_entry = {
+    STANDARD_MODULE_HEADER,
+    "rayaop",  // 拡張機能の名前
+    rayaop_functions,  // 拡張機能が提供する関数
+    PHP_MINIT(rayaop),  // 拡張機能の初期化関数
+    PHP_MSHUTDOWN(rayaop),  // 拡張機能のシャットダウン関数
+    PHP_RINIT(rayaop),  // リクエスト開始時の関数
+    PHP_RSHUTDOWN(rayaop),  // リクエスト終了時の関数
+    PHP_MINFO(rayaop),  // 拡張機能の情報表示関数
+    PHP_RAYAOP_VERSION,  // 拡張機能のバージョン
+    STANDARD_MODULE_PROPERTIES
+};
+
+#ifdef COMPILE_DL_RAYAOP
+ZEND_GET_MODULE(rayaop)
 #endif
