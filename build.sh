@@ -24,7 +24,7 @@ install() {
 
 run() {
     echo "Run..."
-    php -dextension=modules/rayaop.so -ddisplay_errors=1 rayaop.php
+    php -dextension=modules/rayaop.so -ddisplay_errors=1 smoke.php
 }
 
 case $1 in
