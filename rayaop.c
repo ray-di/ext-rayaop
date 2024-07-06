@@ -48,87 +48,109 @@ static zend_bool is_intercepting = 0;  // インターセプト中かどうか�
 static zend_class_entry *zend_ce_ray_aop_interceptedinterface;
 
 // カスタム zend_execute_ex 関数
+#define RAYAOP_ERROR_MEMORY_ALLOCATION 1
+#define RAYAOP_ERROR_HASH_UPDATE 2
+
+static void rayaop_handle_error(int error_code, const char *message) {
+    switch (error_code) {
+        case RAYAOP_ERROR_MEMORY_ALLOCATION:
+            php_error_docref(NULL, E_ERROR, "Memory allocation failed: %s", message);
+            break;
+        case RAYAOP_ERROR_HASH_UPDATE:
+            php_error_docref(NULL, E_ERROR, "Failed to update hash table: %s", message);
+            break;
+        default:
+            php_error_docref(NULL, E_ERROR, "Unknown error: %s", message);
+    }
+}
+
+static bool rayaop_should_intercept(zend_execute_data *execute_data) {
+    return execute_data->func->common.scope && execute_data->func->common.function_name && !is_intercepting;
+}
+
+static char* rayaop_generate_intercept_key(zend_string *class_name, zend_string *method_name, size_t *key_len) {
+    char *key = NULL;
+    *key_len = spprintf(&key, 0, "%s::%s", ZSTR_VAL(class_name), ZSTR_VAL(method_name));
+    RAYAOP_DEBUG_PRINT("Generated key: %s", key);
+    return key;
+}
+
+static intercept_info* rayaop_find_intercept_info(const char *key, size_t key_len) {
+    return zend_hash_str_find_ptr(intercept_ht, key, key_len);
+}
+
+static void rayaop_execute_intercept(zend_execute_data *execute_data, intercept_info *info) {
+    if (Z_TYPE(info->handler) != IS_OBJECT) {
+        return;
+    }
+
+    if (execute_data->This.value.obj == NULL) {
+        RAYAOP_DEBUG_PRINT("Object is NULL, calling original function");
+        original_zend_execute_ex(execute_data);
+        return;
+    }
+
+    zval retval, params[3];
+    ZVAL_OBJ(&params[0], execute_data->This.value.obj);
+    ZVAL_STR(&params[1], info->method_name);
+
+    array_init(&params[2]);
+    uint32_t arg_count = ZEND_CALL_NUM_ARGS(execute_data);
+    zval *args = ZEND_CALL_ARG(execute_data, 1);
+    for (uint32_t i = 0; i < arg_count; i++) {
+        zval *arg = &args[i];
+        Z_TRY_ADDREF_P(arg);
+        add_next_index_zval(&params[2], arg);
+    }
+
+    is_intercepting = 1;
+    zval func_name;
+    ZVAL_STRING(&func_name, "intercept");
+
+    ZVAL_UNDEF(&retval);
+    if (call_user_function(NULL, &info->handler, &func_name, &retval, 3, params) == SUCCESS) {
+        if (!Z_ISUNDEF(retval)) {
+            ZVAL_COPY(execute_data->return_value, &retval);
+        }
+    } else {
+        php_error_docref(NULL, E_WARNING, "Interception failed for %s::%s", ZSTR_VAL(info->class_name), ZSTR_VAL(info->method_name));
+    }
+
+    zval_ptr_dtor(&retval);
+    zval_ptr_dtor(&func_name);
+    zval_ptr_dtor(&params[1]);
+    zval_ptr_dtor(&params[2]);
+
+    is_intercepting = 0;
+}
+
 static void rayaop_zend_execute_ex(zend_execute_data *execute_data)
 {
     RAYAOP_DEBUG_PRINT("rayaop_zend_execute_ex called");
 
-    // 既にインターセプト中の場合は元の関数を呼び出す
-    if (is_intercepting) {
-        RAYAOP_DEBUG_PRINT("Already intercepting, calling original zend_execute_ex");
-        original_zend_execute_ex(execute_data);  // 元のzend_execute_ex関数を呼び出す
+    if (!rayaop_should_intercept(execute_data)) {
+        original_zend_execute_ex(execute_data);
         return;
     }
 
-    zend_function *current_function = execute_data->func;  // 現在の関数情報を取得
+    zend_function *current_function = execute_data->func;
+    zend_string *class_name = current_function->common.scope->name;
+    zend_string *method_name = current_function->common.function_name;
 
-    // クラスメソッドの場合のみ処理を行う
-    if (current_function->common.scope && current_function->common.function_name) {
-        zend_string *class_name = current_function->common.scope->name;  // クラス名を取得
-        zend_string *method_name = current_function->common.function_name;  // メソッド名を取得
+    size_t key_len;
+    char *key = rayaop_generate_intercept_key(class_name, method_name, &key_len);
 
-        char *key = NULL;  // ハッシュキー用の文字列ポインタ
-        size_t key_len;  // ハッシュキーの長さ
-        key_len = spprintf(&key, 0, "%s::%s", ZSTR_VAL(class_name), ZSTR_VAL(method_name));  // ハッシュキーを生成
-        RAYAOP_DEBUG_PRINT("Generated key: %s", key);
+    intercept_info *info = rayaop_find_intercept_info(key, key_len);
 
-        intercept_info *info = zend_hash_str_find_ptr(intercept_ht, key, key_len);  // ハッシュテーブルからインターセプト情報を取得
-
-        if (info) {
-            RAYAOP_DEBUG_PRINT("Found intercept info for key: %s", key);
-
-            if (Z_TYPE(info->handler) == IS_OBJECT) {
-                zval retval, params[3];  // 戻り値とパラメータ用のzvalを宣言
-
-                // オブジェクトがNULLの場合は元の関数を実行
-                if (execute_data->This.value.obj == NULL) {
-                    RAYAOP_DEBUG_PRINT("Object is NULL, calling original function");
-                    original_zend_execute_ex(execute_data);
-                    efree(key);  // キーを解放
-                    return;
-                }
-
-                ZVAL_OBJ(&params[0], execute_data->This.value.obj);  // オブジェクトを設定
-                ZVAL_STR(&params[1], method_name);  // メソッド名を設定
-
-                array_init(&params[2]);  // 引数の配列を初期化
-                uint32_t arg_count = ZEND_CALL_NUM_ARGS(execute_data);  // 引数の数を取得
-                zval *args = ZEND_CALL_ARG(execute_data, 1);  // 引数を取得
-                for (uint32_t i = 0; i < arg_count; i++) {
-                    zval *arg = &args[i];  // 各引数を取得
-                    Z_TRY_ADDREF_P(arg);  // 引数の参照カウントを増やす
-                    add_next_index_zval(&params[2], arg);  // 配列に引数を追加
-                }
-
-                is_intercepting = 1;  // インターセプト中フラグを設定
-                zval func_name;
-                ZVAL_STRING(&func_name, "intercept");  // インターセプトハンドラーのメソッド名を設定
-
-                ZVAL_UNDEF(&retval);
-                if (call_user_function(NULL, &info->handler, &func_name, &retval, 3, params) == SUCCESS) {
-                    if (!Z_ISUNDEF(retval)) {
-                        ZVAL_COPY(execute_data->return_value, &retval);  // 戻り値を設定
-                    }
-                } else {
-                    php_error_docref(NULL, E_WARNING, "Interception failed for %s::%s", ZSTR_VAL(class_name), ZSTR_VAL(method_name));
-                }
-                zval_ptr_dtor(&retval);  // 戻り値を解放
-
-                zval_ptr_dtor(&func_name);  // メソッド名のデストラクタを呼ぶ
-                zval_ptr_dtor(&params[1]);  // メソッド名のデストラクタを呼ぶ
-                zval_ptr_dtor(&params[2]);  // 引数配列のデストラクタを呼ぶ
-
-                is_intercepting = 0;  // インターセプト中フラグを解除
-                efree(key);  // キーを解放
-                return;
-            }
-        } else {
-            RAYAOP_DEBUG_PRINT("No intercept info found for key: %s", key);
-        }
-
-        efree(key);  // キーを解放
+    if (info) {
+        RAYAOP_DEBUG_PRINT("Found intercept info for key: %s", key);
+        rayaop_execute_intercept(execute_data, info);
+    } else {
+        RAYAOP_DEBUG_PRINT("No intercept info found for key: %s", key);
+        original_zend_execute_ex(execute_data);
     }
 
-    original_zend_execute_ex(execute_data);  // 元のzend_execute_ex関数を呼び出す
+    efree(key);
 }
 
 // method_intercept 関数の引数情報
