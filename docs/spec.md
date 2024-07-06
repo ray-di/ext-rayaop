@@ -60,6 +60,34 @@ class MyInterceptor implements MethodInterceptorInterface
 }
 ```
 
+1.1 For Ray.Aop
+
+```php
+<?php
+
+namespace Ray\Aop;
+
+class InterceptHandler implements InterceptHandlerInterface {
+
+    /** @var array<string, Interceptor> */
+    public function __construct(private array $interceptors)
+    {}
+
+    public function intercept(object $object, string $method, array $params): mixed {
+        // Ray.Aopの場合
+        if (! isset($this->interceptors[get_class($object)][$method])) {
+            throw new \LogicException('Interceptors not found');
+        }
+        $interceptors = $this->interceptors[get_class($object)][$method];
+        $invocation = new ReflectiveMethodInvocation($object, $method, $params, $interceptors);
+
+        return $invocation->proceed();
+    }
+}
+
+method_intercept('MyClass', 'myMethod', $interceptHandler);
+```
+
 2. **Registering an Intercept Handler**:
    Use the `method_intercept` function to register an intercept handler for a specific class and method.
 
