@@ -4,44 +4,44 @@
 
 <img src="https://ray-di.github.io/images/logo.svg" alt="ray-di logo" width="150px;">
 
-A PHP extension that provides Aspect-Oriented Programming (AOP) functionality for method interception.
+A high-performance PHP extension that provides Aspect-Oriented Programming (AOP) functionality for method interception.
 
 ## Features
 
-- Intercept method calls on specific classes
+- Efficient method interception for specific classes
 - Apply custom logic before and after method execution
 - Modify method arguments and return values
+- Optimized for performance, eliminating the need for CodeGen
 
 ## Requirements
 
-- PHP 8.0 or higher
+- PHP 8.1 or higher
 - php-dev package installed
 
 ## Installation
 
-2.Compile the extension:
+1. Clone the repository:
+   ```
+   git clone https://github.com/ray-di/ext-rayaop.git
+   cd ext-rayaop
+   ```
 
-```
-phpize
-./configure
-make
-```
+2. Build and install the extension:
+   ```
+   phpize
+   ./configure
+   make
+   make install
+   ```
 
-3. Install the extension:
-
-```
-sudo make install
-```
-
-4. Add the following line to your php.ini file:
-
-```
-extension=rayaop.so
-```
+3. Add the following line to your php.ini file:
+   ```
+   extension=rayaop.so
+   ```
 
 ## About this Extension
 
-This PECL extension is designed to enhance the performance of Ray.Aop by eliminating the need for CodeGen, resulting in faster execution speeds. While it is primarily created for Ray.Aop, it can also be used to implement custom AOP solutions independently of Ray.Aop.
+This PECL extension is designed to enhance the performance of Ray.Aop by eliminating the need for CodeGen, resulting in faster execution speeds. While primarily created for Ray.Aop, it can also be used to implement custom AOP solutions independently.
 
 By using this extension, developers can achieve high-performance method interception without the overhead of generating and compiling additional code.
 
@@ -85,7 +85,7 @@ $interceptor = new MyInterceptor();
 method_intercept('TestClass', 'testMethod', $interceptor);
 ```
 
-### Example
+### Complete Example
 
 ```php
 class TestClass
@@ -102,17 +102,9 @@ $result = $test->testMethod("test");
 echo "Result: $result\n";
 ```
 
-## Running Tests
-
-To run the tests, use the following command:
-
-```
-php -dextension=./modules/rayaop.so test/rayaop_test.php
-```
-
 ## Build Script
 
-You can use the build.sh script for various build operations:
+The `build.sh` script provides various operations for building and managing the extension:
 
 ```sh
 ./build.sh clean   # Clean the build environment
@@ -122,10 +114,30 @@ You can use the build.sh script for various build operations:
 ./build.sh all     # Execute all the above steps
 ```
 
-## Contributing
+Use `./build.sh all` for a complete build and installation process.
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+[... Previous content remains the same ...]
 
-## License
+## Running Tests
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+To run the tests for this extension, use the following command:
+
+```sh
+make test
+```
+
+This command will execute the PHP extension's test suite, which is the standard method for testing PHP extensions.
+
+If you need to run specific tests or want more verbose output, you can use:
+
+```sh
+make test TESTS="-v tests/your_specific_test.phpt"
+```
+
+Replace `your_specific_test.phpt` with the actual test file you want to run.
+
+## Performance Considerations
+
+- The extension is optimized for minimal overhead during method interception.
+- It bypasses the need for runtime code generation, leading to faster execution.
+- Consider the impact of complex interceptor logic on overall performance.
