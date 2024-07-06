@@ -1,8 +1,6 @@
 <?php
 
-require __DIR__ . '/php-src/InterceptedInterface.php';
-
-class Intercepted implements Ray\Aop\MethodInterceptorInterface
+class MethodInterceptor implements Ray\Aop\MethodInterceptorInterface
 {
     public function intercept(object $object, string $method, array $params): mixed
     {
@@ -14,8 +12,8 @@ class Intercepted implements Ray\Aop\MethodInterceptorInterface
     }
 }
 
-$intercepted = new Intercepted();
-method_intercept('TestClass', 'testMethod', $intercepted);
+$interceptor = new MethodInterceptor();
+method_intercept('TestClass', 'testMethod', $interceptor);
 
 class TestClass
 {

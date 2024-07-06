@@ -201,6 +201,20 @@ PHP_FUNCTION(method_intercept) {
     RETURN_TRUE;
 }
 
+// Define the interface
+zend_class_entry *ray_aop_method_interceptor_interface_ce;
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_ray_aop_method_interceptor_intercept, 0, 3, IS_MIXED, 0)
+    ZEND_ARG_TYPE_INFO(0, object, IS_OBJECT, 0)
+    ZEND_ARG_TYPE_INFO(0, method, IS_STRING, 0)
+    ZEND_ARG_TYPE_INFO(0, params, IS_ARRAY, 0)
+ZEND_END_ARG_INFO()
+
+static const zend_function_entry ray_aop_method_interceptor_interface_methods[] = {
+    ZEND_ABSTRACT_ME(Ray_Aop_MethodInterceptorInterface, intercept, arginfo_ray_aop_method_interceptor_intercept)
+    PHP_FE_END
+};
+
 /**
  * 拡張機能の初期化関数
  * link: https://www.phpinternalsbook.com/php7/extensions_design/hooks.html
@@ -214,6 +228,10 @@ PHP_MINIT_FUNCTION(rayaop)
 #else
     php_rayaop_init_globals(&rayaop_globals);
 #endif
+
+    zend_class_entry ce;
+    INIT_CLASS_ENTRY(ce, "Ray\\Aop\\MethodInterceptorInterface", ray_aop_method_interceptor_interface_methods);
+    ray_aop_method_interceptor_interface_ce = zend_register_internal_interface(&ce);
 
     original_zend_execute_ex = zend_execute_ex;
     zend_execute_ex = rayaop_zend_execute_ex;
