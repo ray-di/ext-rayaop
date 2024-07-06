@@ -34,4 +34,4 @@ var_dump($result);
 
 ?>
 --EXPECT--
-string(47) "Interceptor2: Interceptor1: Original: Hello"
+ string(29) "Interceptor2: Original: Hello"
