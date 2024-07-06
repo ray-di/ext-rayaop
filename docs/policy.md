@@ -1,50 +1,50 @@
-# Ray.Aop PECL拡張 実装方針
+# Ray.Aop PECL Extension Implementation Policy
 
-## 1. インターセプション機能の実装
+## 1. Implementation of Interception Functionality
 
-- Zend Engineのフックを利用して、指定されたクラスとメソッドの呼び出しをインターセプトする機能を実装します。
-- オリジナルのメソッド呼び出しをラップし、インターセプトハンドラーを呼び出すメカニズムを構築します。
+- Utilize Zend Engine hooks to implement functionality that intercepts calls to specified classes and methods.
+- Construct a mechanism that wraps original method calls and invokes intercept handlers.
 
-## 2. MethodInterceptorInterfaceの実装
+## 2. Implementation of MethodInterceptorInterface
 
-- PHPユーザーランドで定義されるMethodInterceptorInterfaceをC言語レベルで処理できるようにします。
-- interceptメソッドの呼び出しを適切に処理し、ユーザー定義のインターセプトロジックを実行できるようにします。
+- Enable C-level processing of the MethodInterceptorInterface defined in PHP userland.
+- Properly handle the invocation of the intercept method, allowing execution of user-defined interception logic.
 
-## 3. method_intercept関数の実装
+## 3. Implementation of method_intercept Function
 
-- クラス名、メソッド名、MethodInterceptorInterfaceオブジェクトを受け取り、インターセプション情報を内部で管理する仕組みを作ります。
-- 登録されたインターセプション情報を効率的に保存し、高速にアクセスできるデータ構造を設計します。
+- Create a mechanism to internally manage interception information by receiving class name, method name, and MethodInterceptorInterface object.
+- Design an efficient data structure to store and quickly access registered interception information.
 
-## 4. パフォーマンスの最適化
+## 4. Performance Optimization
 
-- インターセプション処理によるオーバーヘッドを最小限に抑えるため、効率的なコード生成やキャッシュ機構を検討します。
-- 不要な場合にはインターセプション処理をスキップするような最適化を行います。
+- Consider efficient code generation and caching mechanisms to minimize overhead caused by interception processing.
+- Implement optimizations to skip interception processing when unnecessary.
 
-## 5. PHP8互換性
+## 5. PHP 8 Compatibility
 
-- 当初はPHP8のみをサポートし、PHP7との互換性は考慮しません。
-- 将来的なPHP7サポートの可能性を考慮し、拡張性のある設計を心がけます。
+- Initially support only PHP 8, without considering compatibility with PHP 7.
+- Keep in mind extensible design for potential future PHP 7 support.
 
-## 6. メモリ管理
+## 6. Memory Management
 
-- インターセプション情報やオブジェクトの参照カウントを適切に管理し、メモリリークを防ぎます。
+- Properly manage reference counts of interception information and objects to prevent memory leaks.
 
-## 7. エラーハンドリング
+## 7. Error Handling
 
-- 無効な引数や実行時エラーに対して適切に対応し、PHPのエラーハンドリング機構と統合します。
+- Appropriately handle invalid arguments and runtime errors, integrating with PHP's error handling mechanism.
 
-## 8. 拡張性
+## 8. Extensibility
 
-- 将来的な機能拡張や変更に対応できるよう、モジュール化された設計を心がけます。
+- Aim for a modularized design to accommodate future feature extensions and changes.
 
-## 9. ユーザーランドでのマッチング
+## 9. Userland Matching
 
-- マッチング処理はユーザーランドで行われることを前提とします。
-- PECL拡張はインターセプターを直接呼び出すのではなく、インターセプトハンドラーを呼び出します。
+- Assume that matching processes will be performed in userland.
+- The PECL extension will call intercept handlers rather than directly calling interceptors.
 
-## 10. インターセプトハンドラーの呼び出し
+## 10. Invocation of Intercept Handlers
 
-- インターセプションが発生した際、登録されたインターセプトハンドラーを呼び出します。
-- インターセプトハンドラーがインターセプターの呼び出しを制御し、Ray.Aop以外のインターセプターとの連携を可能にします。
+- Call registered intercept handlers when interception occurs.
+- Allow intercept handlers to control the invocation of interceptors, enabling integration with interceptors other than Ray.Aop.
 
-これらの方針に基づいて実装を進めることで、効率的で信頼性の高いRay.Aop PECL拡張を開発します。
+By proceeding with implementation based on these policies, we will develop an efficient and reliable Ray.Aop PECL extension.

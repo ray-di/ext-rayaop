@@ -1,91 +1,95 @@
-### Ray.Aop PECL拡張仕様書
+### Ray.Aop PECL Extension Specification
 
-#### 概要
-Ray.Aopは、PHPにアスペクト指向プログラミング（AOP）の機能を提供するPECL拡張です。本仕様書では、Ray.Aop拡張の機能、使用方法、インターフェイスについて説明します。
+#### Overview
+Ray.Aop is a PECL extension that provides Aspect-Oriented Programming (AOP) capabilities to PHP. This specification outlines the features, usage, and interfaces of the Ray.Aop extension.
 
-#### 機能
-1. **インターセプション機能**:
-   指定されたクラスとメソッドに対して実行時に指定した`intercept`メソッドがコールされます。
+#### Features
+1. **Interception Mechanism**:
+   The `intercept` method of the specified intercept handler is called at runtime for designated classes and methods.
 
-2. **インターセプトハンドラー**:
-   インターセプトハンドラーがインターセプターを呼び出します。ここをユーザーが作成することでRay.Aop以外のインターセプターとの連携が可能です。
+2. **Intercept Handlers**:
+   Intercept handlers are used to insert custom logic before and after method execution.
 
-#### インターフェイスとクラス
+#### Interface
 
-##### InterceptHandlerInterface
+##### MethodInterceptorInterface
 
-Ray.Aopは、インターセプションを管理するためのインターフェイスを提供します。このインターフェイスは、PHPのユーザーが実装し、特定のクラスとメソッドに対してカスタムロジックを挿入するために使用されます。
+Ray.Aop provides an interface for managing interception. This interface should be implemented by PHP users to insert custom logic for specific classes and methods.
 
 - **Namespace**: `Ray\Aop`
-- **メソッド**:
+- **Method**:
     - `intercept(object $object, string $method, array $params): mixed`
 
-##### MethodInvocationクラス
-インターセプターが呼び出されたときに、対象のメソッドを呼び出し、インターセプターのチェインを管理するためのクラスです。
-
-- **Namespace**: `Ray\Aop`
-- **メソッド**:
-    - `proceed()`: インターセプターのチェインを進め、最終的にターゲットメソッドを実行します。
-
-#### 関数
+#### Function
 
 ##### method_intercept
-指定されたクラスとメソッドに対してインターセプトハンドラーを登録します。
+Registers an intercept handler for the specified class and method.
 
-- **関数名**: `method_intercept`
-- **パラメータ**:
-    - `string $className`: 対象クラス名
-    - `string $methodName`: 対象メソッド名
-    - `Ray\Aop\InterceptHandlerInterface $handler`: 登録するインターセプトハンドラー
-- **戻り値**: なし (`void`)
+- **Function Name**: `method_intercept`
+- **Parameters**:
+    - `string $className`: Target class name
+    - `string $methodName`: Target method name
+    - `Ray\Aop\MethodInterceptorInterface $handler`: Intercept handler to register
+- **Return Value**: `bool` (true if registration is successful, false if it fails)
 
-#### 使用方法
+#### Usage
 
-1. **インターセプトハンドラーの登録**:
-   `method_intercept` 関数を使用して、特定のクラスとメソッドにインターセプトハンドラーを登録します。
-
-1.1 Ray.Aopの場合
+1. **Implementing an Intercept Handler**:
+   Create a class that implements `Ray\Aop\MethodInterceptorInterface`.
 
 ```php
 <?php
 
 namespace Ray\Aop;
 
-class InterceptHandler implements InterceptHandlerInterface {
-
-    /** @var array<string, Interceptor> */
-    public function __construct(private array $interceptors)
-    {}
-
-    public function intercept(object $object, string $method, array $params): mixed {
-        // Ray.Aopの場合
-        if (! isset($this->interceptors[get_class($object)][$method])) {
-            throw new \LogicException('Interceptors not found');
-        }
-        $interceptors = $this->interceptors[get_class($object)][$method];
-        $invocation = new ReflectiveMethodInvocation($object, $method, $params, $interceptors);
-
-        return $invocation->proceed();
-    }
-}
-
-method_intercept('MyClass', 'myMethod', $interceptHandler);
-```
-
-独自のインターセプトハンドラー
-
-```php
-class MyInterceptHandler implements InterceptHandlerInterface
+class MyInterceptor implements MethodInterceptorInterface
 {
     public function intercept(object $object, string $method, array $params): mixed
     {
-        $hasSpecificAttribute = true; // Check special attribute for example
-        if ($hasSpecificAttribute) {
-            // do something before
-            $result = call_user_func([$object, $method], ...$params);
-            // do something after
-            return $result;
-        }
+        // Pre-execution logic
+        echo "Before method execution\n";
+        
+        // Call the original method
+        $result = call_user_func_array([$object, $method], $params);
+        
+        // Post-execution logic
+        echo "After method execution\n";
+        
+        return $result;
     }
 }
 ```
+
+2. **Registering an Intercept Handler**:
+   Use the `method_intercept` function to register an intercept handler for a specific class and method.
+
+```php
+<?php
+
+$interceptor = new Ray\Aop\MyInterceptor();
+$result = method_intercept('MyClass', 'myMethod', $interceptor);
+
+if ($result) {
+    echo "Interceptor registered successfully\n";
+} else {
+    echo "Failed to register interceptor\n";
+}
+```
+
+3. **Interception in Action**:
+   When a method of the registered class is called, the `intercept` method of the intercept handler is automatically executed.
+
+```php
+<?php
+
+$myObject = new MyClass();
+$myObject->myMethod(); // This call will trigger the interceptor
+```
+
+#### Important Notes
+
+- The intercept handler is executed every time the target method is called.
+- If multiple intercept handlers are registered for the same method, only the last registered one will be effective.
+- When calling the original method within an intercept handler, always use `call_user_func_array` or `call_user_func`.
+- The extension does not currently support method invocation chaining or multiple interceptors per method.
+- Interceptors are applied globally and affect all instances of the intercepted class.
