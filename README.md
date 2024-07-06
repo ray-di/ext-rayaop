@@ -11,12 +11,10 @@ A PHP extension that provides Aspect-Oriented Programming (AOP) functionality fo
 - Efficient method interception for specific classes
 - Apply custom logic before and after method execution
 - Works with `final` classes and methods
-- Allows `new` keyword usage anywhere in the code
 
 ## Requirements
 
 - PHP 8.1 or higher
-- php-dev package installed
 
 ## Installation
 
