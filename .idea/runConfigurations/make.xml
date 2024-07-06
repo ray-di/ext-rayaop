@@ -1,5 +1,5 @@
 <component name="ProjectRunConfigurationManager">
-  <configuration default="false" name="make" type="CLionExternalRunConfiguration" factoryName="Application" nameIsGenerated="true" PROGRAM_PARAMS="-n -d &quot;extension=modules/rayaop.so&quot; &quot;rayaop.php&quot; " REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" WORKING_DIR="file://$ContentRoot$" PASS_PARENT_ENVS_2="true" PROJECT_NAME="rayaop" TARGET_NAME="make" CONFIG_NAME="make" RUN_PATH="/opt/homebrew/opt/php@8.3/bin/php">
+  <configuration default="false" name="make" type="CLionExternalRunConfiguration" factoryName="Application" nameIsGenerated="true" PROGRAM_PARAMS="-n -d &quot;extension=modules/rayaop.so&quot; &quot;smoke.php&quot; " REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" WORKING_DIR="file://$ContentRoot$" PASS_PARENT_ENVS_2="true" PROJECT_NAME="rayaop" TARGET_NAME="make" CONFIG_NAME="make" RUN_PATH="/opt/homebrew/opt/php@8.3/bin/php">
     <method v="2">
       <option name="CLION.EXTERNAL.BUILD" enabled="true" />
     </method>
