@@ -21,23 +21,26 @@ A PHP extension that provides Aspect-Oriented Programming (AOP) functionality fo
 ## Installation
 
 1. Clone the repository:
-   ```
+
+```
 git clone https://github.com/ray-di/ext-rayaop.git
 cd ext-rayaop
-   ```
+```
 
 2. Build and install the extension:
-   ```
+
+```
 phpize
 ./configure
 make
 make install
-   ```
+```
 
 3. Add the following line to your php.ini file:
-   ```
+
+```
 extension=rayaop.so
-   ```
+```
 
 ## About this Extension
 
@@ -164,5 +167,4 @@ make test TESTS="-v tests/your_specific_test.phpt"
 ```
 
 Replace `your_specific_test.phpt` with the actual test file you want to run.
-```
 
