@@ -1,91 +1,91 @@
-#ifndef PHP_RAYAOP_H  // PHP_RAYAOP_Hが定義されていない場合
-#define PHP_RAYAOP_H  // PHP_RAYAOP_Hを定義（ヘッダーガード）
+#ifndef PHP_RAYAOP_H  // If PHP_RAYAOP_H is not defined
+#define PHP_RAYAOP_H  // Define PHP_RAYAOP_H (header guard)
 
-#ifdef HAVE_CONFIG_H  // HAVE_CONFIG_Hが定義されている場合
-#include "config.h"  // config.hをインクルード
+#ifdef HAVE_CONFIG_H  // If HAVE_CONFIG_H is defined
+#include "config.h"  // Include config.h
 #endif
 
-#include "php.h"  // PHP核のヘッダーファイルをインクルード
-#include "php_ini.h"  // PHP INI関連のヘッダーファイルをインクルード
-#include "ext/standard/info.h"  // 標準拡張モジュールの情報関連ヘッダーをインクルード
-#include "zend_exceptions.h"  // Zend例外処理関連のヘッダーをインクルード
-#include "zend_interfaces.h"  // Zendインターフェース関連のヘッダーをインクルード
+#include "php.h"  // Include PHP core header file
+#include "php_ini.h"  // Include PHP INI related header file
+#include "ext/standard/info.h"  // Include standard extension module information related header
+#include "zend_exceptions.h"  // Include Zend exception handling related header
+#include "zend_interfaces.h"  // Include Zend interface related header
 
-#ifdef ZTS  // スレッドセーフモードの場合
-#include "TSRM.h"  // Thread Safe Resource Managerをインクルード
+#ifdef ZTS  // If in thread-safe mode
+#include "TSRM.h"  // Include Thread Safe Resource Manager
 #endif
 
-#define PHP_RAYAOP_VERSION "1.0.0"  // RayAOP拡張機能のバージョンを定義
-#define RAYAOP_NS "Ray\\Aop\\"  // RayAOPの名前空間を定義
+#define PHP_RAYAOP_VERSION "1.0.0"  // Define RayAOP extension version
+#define RAYAOP_NS "Ray\\Aop\\"  // Define RayAOP namespace
 
-extern zend_module_entry rayaop_module_entry;  // rayaopモジュールエントリを外部参照として宣言
-#define phpext_rayaop_ptr &rayaop_module_entry  // rayaopモジュールへのポインタを定義
+extern zend_module_entry rayaop_module_entry;  // Declare rayaop module entry as external reference
+#define phpext_rayaop_ptr &rayaop_module_entry  // Define pointer to rayaop module
 
-#ifdef PHP_WIN32  // Windows環境の場合
-#define PHP_RAYAOP_API __declspec(dllexport)  // DLLエクスポート指定
-#elif defined(__GNUC__) && __GNUC__ >= 4  // GCC 4以上の場合
-#define PHP_RAYAOP_API __attribute__ ((visibility("default")))  // デフォルトの可視性を指定
-#else  // その他の環境
-#define PHP_RAYAOP_API  // 特に指定なし
+#ifdef PHP_WIN32  // If in Windows environment
+#define PHP_RAYAOP_API __declspec(dllexport)  // Specify DLL export
+#elif defined(__GNUC__) && __GNUC__ >= 4  // If using GCC 4 or later
+#define PHP_RAYAOP_API __attribute__ ((visibility("default")))  // Specify default visibility
+#else  // For other environments
+#define PHP_RAYAOP_API  // No specific definition
 #endif
 
-#ifdef ZTS  // スレッドセーフモードの場合
-#include "TSRM.h"  // Thread Safe Resource Managerを再度インクルード（冗長だが安全のため）
+#ifdef ZTS  // If in thread-safe mode
+#include "TSRM.h"  // Include Thread Safe Resource Manager again (redundant but for safety)
 #endif
 
-// デバッグ出力用マクロ
-#ifdef RAYAOP_DEBUG  // デバッグモードが有効な場合
-#define RAYAOP_DEBUG_PRINT(fmt, ...) php_printf("RAYAOP DEBUG: " fmt "\n", ##__VA_ARGS__)  // デバッグ出力マクロを定義
-#else  // デバッグモードが無効な場合
-#define RAYAOP_DEBUG_PRINT(fmt, ...)  // 何もしない
+// Macro for debug output
+#ifdef RAYAOP_DEBUG  // If debug mode is enabled
+#define RAYAOP_DEBUG_PRINT(fmt, ...) php_printf("RAYAOP DEBUG: " fmt "\n", ##__VA_ARGS__)  // Define debug output macro
+#else  // If debug mode is disabled
+#define RAYAOP_DEBUG_PRINT(fmt, ...)  // Do nothing
 #endif
 
-// エラーコード
-#define RAYAOP_ERROR_MEMORY_ALLOCATION 1  // メモリ割り当てエラーのコード
-#define RAYAOP_ERROR_HASH_UPDATE 2  // ハッシュ更新エラーのコード
+// Error codes
+#define RAYAOP_ERROR_MEMORY_ALLOCATION 1  // Error code for memory allocation
+#define RAYAOP_ERROR_HASH_UPDATE 2  // Error code for hash update
 
 /**
- * インターセプト情報を保持する構造体
- * link: http//://www.phpinternalsbook.com/php5/classes_objects/internal_structures_and_implementation.html
+ * Structure to hold intercept information
+ * link: http://www.phpinternalsbook.com/php5/classes_objects/internal_structures_and_implementation.html
  * link: http://php.adamharvey.name/manual/ja/internals2.variables.tables.php
  */
 typedef struct _intercept_info {
-    zend_string *class_name;     // インターセプト対象のクラス名
-    zend_string *method_name;    // インターセプト対象のメソッド名
-    zval handler;                // インターセプトハンドラー
+    zend_string *class_name;     // Class name to intercept
+    zend_string *method_name;    // Method name to intercept
+    zval handler;                // Intercept handler
 } intercept_info;
 
-// 関数宣言
-PHP_MINIT_FUNCTION(rayaop);  // モジュール初期化関数
-PHP_MSHUTDOWN_FUNCTION(rayaop);  // モジュールシャットダウン関数
-PHP_RINIT_FUNCTION(rayaop);  // リクエスト初期化関数
-PHP_RSHUTDOWN_FUNCTION(rayaop);  // リクエストシャットダウン関数
-PHP_MINFO_FUNCTION(rayaop);  // モジュール情報関数
+// Function declarations
+PHP_MINIT_FUNCTION(rayaop);  // Module initialization function
+PHP_MSHUTDOWN_FUNCTION(rayaop);  // Module shutdown function
+PHP_RINIT_FUNCTION(rayaop);  // Request initialization function
+PHP_RSHUTDOWN_FUNCTION(rayaop);  // Request shutdown function
+PHP_MINFO_FUNCTION(rayaop);  // Module information function
 
-PHP_FUNCTION(method_intercept);  // メソッドインターセプト関数
+PHP_FUNCTION(method_intercept);  // Method intercept function
 
-// ユーティリティ関数の宣言
-void rayaop_handle_error(const char *message);  // エラーハンドリング関数
-bool rayaop_should_intercept(zend_execute_data *execute_data);  // インターセプトの必要性を判断する関数
-char* rayaop_generate_intercept_key(zend_string *class_name, zend_string *method_name, size_t *key_len);  // インターセプトキーを生成する関数
-intercept_info* rayaop_find_intercept_info(const char *key, size_t key_len);  // インターセプト情報を検索する関数
-void rayaop_execute_intercept(zend_execute_data *execute_data, intercept_info *info);  // インターセプトを実行する関数
-void rayaop_free_intercept_info(zval *zv);  // インターセプト情報を解放する関数
+// Utility function declarations
+void rayaop_handle_error(const char *message);  // Error handling function
+bool rayaop_should_intercept(zend_execute_data *execute_data);  // Function to determine if interception is necessary
+char* rayaop_generate_intercept_key(zend_string *class_name, zend_string *method_name, size_t *key_len);  // Function to generate intercept key
+intercept_info* rayaop_find_intercept_info(const char *key, size_t key_len);  // Function to search for intercept information
+void rayaop_execute_intercept(zend_execute_data *execute_data, intercept_info *info);  // Function to execute interception
+void rayaop_free_intercept_info(zval *zv);  // Function to free intercept information
 
-#ifdef RAYAOP_DEBUG  // デバッグモードが有効な場合
-void rayaop_debug_print_zval(zval *value);  // zval値をデバッグ出力する関数
-void rayaop_dump_intercept_info(void);  // インターセプト情報をダンプする関数
+#ifdef RAYAOP_DEBUG  // If debug mode is enabled
+void rayaop_debug_print_zval(zval *value);  // Function to debug print zval value
+void rayaop_dump_intercept_info(void);  // Function to dump intercept information
 #endif
 
-ZEND_BEGIN_MODULE_GLOBALS(rayaop)  // rayaopモジュールのグローバル変数の開始
-    HashTable *intercept_ht;  // インターセプトハッシュテーブル
-    zend_bool is_intercepting;  // インターセプト中フラグ
-ZEND_END_MODULE_GLOBALS(rayaop)  // rayaopモジュールのグローバル変数の終了
+ZEND_BEGIN_MODULE_GLOBALS(rayaop)  // Start of rayaop module global variables
+    HashTable *intercept_ht;  // Intercept hash table
+    zend_bool is_intercepting;  // Intercepting flag
+ZEND_END_MODULE_GLOBALS(rayaop)  // End of rayaop module global variables
 
-#ifdef ZTS  // スレッドセーフモードの場合
-#define RAYAOP_G(v) TSRMG(rayaop_globals_id, zend_rayaop_globals *, v)  // グローバル変数アクセスマクロ（スレッドセーフ版）
-#else  // 非スレッドセーフモードの場合
-#define RAYAOP_G(v) (rayaop_globals.v)  // グローバル変数アクセスマクロ（非スレッドセーフ版）
+#ifdef ZTS  // If in thread-safe mode
+#define RAYAOP_G(v) TSRMG(rayaop_globals_id, zend_rayaop_globals *, v)  // Global variable access macro (thread-safe version)
+#else  // If in non-thread-safe mode
+#define RAYAOP_G(v) (rayaop_globals.v)  // Global variable access macro (non-thread-safe version)
 #endif
 
-#endif /* PHP_RAYAOP_H */  // ヘッダーガードの終了
+#endif /* PHP_RAYAOP_H */  // End of header guard
