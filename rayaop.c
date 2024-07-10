@@ -4,6 +4,10 @@
 
 #define PHP_RAYAOP_VERSION "0.1.0"
 
+#ifndef RAYAOP_QUIET
+#define RAYAOP_QUIET 0
+#endif
+
 #include "php_rayaop.h"  /* Include header file for RayAOP extension */
 
 /* Declaration of module global variables */
@@ -330,6 +334,10 @@ PHP_MINIT_FUNCTION(rayaop) {
     ts_allocate_id(&rayaop_globals_id, sizeof(zend_rayaop_globals), (ts_allocate_ctor) php_rayaop_init_globals, NULL);  /* Initialize global variables in thread-safe mode */
 #else
     php_rayaop_init_globals(&rayaop_globals); /* Initialize global variables in non-thread-safe mode */
+#endif
+
+#if PHP_RAYAOP_EXPERIMENTAL && !RAYAOP_QUIET
+    php_error_docref(NULL, E_NOTICE, "The Ray.Aop extension is experimental. Its functions may change or be removed in future releases.");
 #endif
 
     zend_class_entry ce;

@@ -34,4 +34,11 @@ if test "$PHP_RAYAOP" != "no"; then
   dnl Add instruction to install header files
   dnl link https://www.phpinternalsbook.com/build_system/build_system.html#php-install-headers
   PHP_INSTALL_HEADERS([ext/rayaop], [php_rayaop.h])
+
+  PHP_ARG_ENABLE(rayaop-quiet, whether to suppress experimental notices,
+  [ --enable-rayaop-quiet   Suppress experimental notices], no, yes)
+
+  if test "$PHP_RAYAOP_QUIET" != "no"; then
+      AC_DEFINE(RAYAOP_QUIET, 1, [Whether to suppress experimental notices])
+  fi
 fi
