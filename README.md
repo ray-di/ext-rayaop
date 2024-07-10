@@ -30,7 +30,7 @@ cd ext-rayaop
 ```
 phpize
 ./configure
-make
+make --enable-rayaop-quiet // Suppress E_NOTICE to indicate experimental.
 make install
 ```
 
