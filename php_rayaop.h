@@ -18,9 +18,6 @@
 #include "TSRM.h"
 #endif
 
-/* Define RayAOP extension version */
-#define PHP_RAYAOP_VERSION "1.0.0"
-
 /* Define RayAOP namespace */
 #define RAYAOP_NS "Ray\\Aop\\"
 

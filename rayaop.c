@@ -2,6 +2,8 @@
 #include "config.h"  /* Include configuration file */
 #endif
 
+#define PHP_RAYAOP_VERSION "0.1.0"
+
 #include "php_rayaop.h"  /* Include header file for RayAOP extension */
 
 /* Declaration of module global variables */
@@ -98,64 +100,76 @@ php_rayaop_intercept_info *php_rayaop_find_intercept_info(const char *key, size_
 }
 /* }}} */
 
+/* {{{ Helper function to prepare intercept parameters */
+static void prepare_intercept_params(zend_execute_data *execute_data, zval *params, php_rayaop_intercept_info *info) {
+    ZVAL_OBJ(&params[0], execute_data->This.value.obj);
+    ZVAL_STR(&params[1], info->method_name);
+
+    array_init(&params[2]);
+    uint32_t arg_count = ZEND_CALL_NUM_ARGS(execute_data);
+    zval *args = ZEND_CALL_ARG(execute_data, 1);
+    for (uint32_t i = 0; i < arg_count; i++) {
+        zval *arg = &args[i];
+        Z_TRY_ADDREF_P(arg);
+        add_next_index_zval(&params[2], arg);
+    }
+}
+/* }}} */
+
+/* {{{ Helper function to call the intercept handler */
+static bool call_intercept_handler(zval *handler, zval *params, zval *retval) {
+    zval func_name;
+    ZVAL_STRING(&func_name, "intercept");
+
+    bool success = (call_user_function(NULL, handler, &func_name, retval, 3, params) == SUCCESS);
+
+    zval_ptr_dtor(&func_name);
+    return success;
+}
+/* }}} */
+
+/* {{{ Helper function to clean up after interception */
+static void cleanup_intercept(zval *params, zval *retval) {
+    zval_ptr_dtor(&params[1]);
+    zval_ptr_dtor(&params[2]);
+    zval_ptr_dtor(retval);
+}
+/* }}} */
+
 /* {{{ proto void php_rayaop_execute_intercept(zend_execute_data *execute_data, php_rayaop_intercept_info *info)
-   Function to execute interception
-
-   This function executes the interception logic for a given method call.
-
-   @param zend_execute_data *execute_data The execution data
-   @param php_rayaop_intercept_info *info The intercept information
-*/
+   Main function to execute method interception */
 void php_rayaop_execute_intercept(zend_execute_data *execute_data, php_rayaop_intercept_info *info) {
+    PHP_RAYAOP_DEBUG_PRINT("Executing intercept for %s::%s", ZSTR_VAL(info->class_name), ZSTR_VAL(info->method_name));
+
     if (Z_TYPE(info->handler) != IS_OBJECT) {
-        /* If handler is not an object */
-        return; /* Abort processing */
+        PHP_RAYAOP_DEBUG_PRINT("Invalid handler, skipping interception");
+        return;
     }
 
     if (execute_data->This.value.obj == NULL) {
-        /* If target object is NULL */
-        PHP_RAYAOP_DEBUG_PRINT("Object is NULL, calling original function"); /* Output debug information */
-        php_rayaop_original_execute_ex(execute_data); /* Execute original function */
-        return; /* Abort processing */
+        PHP_RAYAOP_DEBUG_PRINT("Object is NULL, calling original function");
+        php_rayaop_original_execute_ex(execute_data);
+        return;
     }
 
-    zval retval, params[3]; /* Prepare variables to store return value and arguments */
-    ZVAL_OBJ(&params[0], execute_data->This.value.obj); /* 1st argument: target object */
-    ZVAL_STR(&params[1], info->method_name); /* 2nd argument: method name */
+    zval retval, params[3];
+    prepare_intercept_params(execute_data, params, info);
 
-    array_init(&params[2]); /* Initialize array to store method arguments as 3rd argument */
-    uint32_t arg_count = ZEND_CALL_NUM_ARGS(execute_data); /* Get number of arguments */
-    zval *args = ZEND_CALL_ARG(execute_data, 1); /* Get argument array */
-    for (uint32_t i = 0; i < arg_count; i++) {
-        /* For each argument */
-        zval *arg = &args[i];
-        Z_TRY_ADDREF_P(arg); /* Increase reference count */
-        add_next_index_zval(&params[2], arg); /* Add to array */
-    }
+    RAYAOP_G(is_intercepting) = 1;
 
-    RAYAOP_G(is_intercepting) = 1; /* Set intercept flag */
-    zval func_name;
-    ZVAL_STRING(&func_name, "intercept"); /* Set function name to call */
-
-    ZVAL_UNDEF(&retval); /* Initialize return value as undefined */
-    if (call_user_function(NULL, &info->handler, &func_name, &retval, 3, params) == SUCCESS) {
-        /* Call intercept function */
+    ZVAL_UNDEF(&retval);
+    if (call_intercept_handler(&info->handler, params, &retval)) {
         if (!Z_ISUNDEF(retval)) {
-            /* If return value is defined */
-            ZVAL_COPY(execute_data->return_value, &retval); /* Copy return value */
+            ZVAL_COPY(execute_data->return_value, &retval);
         }
     } else {
-        /* If interception fails */
-        php_error_docref(NULL, E_WARNING, "Interception failed for %s::%s", ZSTR_VAL(info->class_name),
-                         ZSTR_VAL(info->method_name)); /* Output warning */
+        php_error_docref(NULL, E_WARNING, "Interception failed for %s::%s", ZSTR_VAL(info->class_name), ZSTR_VAL(info->method_name));
     }
 
-    zval_ptr_dtor(&retval); /* Free memory for return value */
-    zval_ptr_dtor(&func_name); /* Free memory for function name */
-    zval_ptr_dtor(&params[1]); /* Free memory for method name */
-    zval_ptr_dtor(&params[2]); /* Free memory for argument array */
+    cleanup_intercept(params, &retval);
+    RAYAOP_G(is_intercepting) = 0;
 
-    RAYAOP_G(is_intercepting) = 0; /* Reset intercept flag */
+    PHP_RAYAOP_DEBUG_PRINT("Interception completed for %s::%s", ZSTR_VAL(info->class_name), ZSTR_VAL(info->method_name));
 }
 /* }}} */
 
