@@ -84,6 +84,7 @@ ZEND_BEGIN_MODULE_GLOBALS(rayaop)
     HashTable *intercept_ht; /* Intercept hash table */
     zend_bool is_intercepting; /* Intercepting flag */
     int execution_depth;
+    zend_bool method_intercept_enabled;
 ZEND_END_MODULE_GLOBALS(rayaop) /* End of rayaop module global variables */
 
 /* If in thread-safe mode, global variable access macro (thread-safe version) */

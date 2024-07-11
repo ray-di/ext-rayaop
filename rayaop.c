@@ -50,6 +50,11 @@ ZEND_END_ARG_INFO()
 ZEND_BEGIN_ARG_INFO(arginfo_method_intercept_init, 0)
 ZEND_END_ARG_INFO()
 
+/* Argument information for method_intercept_enable function */
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_enable_method_intercept, 0, 1, IS_VOID, 0)
+    ZEND_ARG_TYPE_INFO(0, enable, _IS_BOOL, 0)
+ZEND_END_ARG_INFO()
+
 /* {{{ proto void php_rayaop_handle_error(const char *message)
    Error handling function
 
@@ -407,6 +412,24 @@ PHP_FUNCTION(method_intercept_init) {
     }
     RETURN_TRUE; /* Return true to indicate success */
 }
+
+PHP_FUNCTION(enable_method_intercept)
+{
+    zend_bool enable;
+
+    ZEND_PARSE_PARAMETERS_START(1, 1)
+        Z_PARAM_BOOL(enable)
+    ZEND_PARSE_PARAMETERS_END();
+
+    RAYAOP_G(method_intercept_enabled) = enable;
+    if (enable) {
+        zend_execute_ex = php_rayaop_execute_ex;
+        PHP_RAYAOP_DEBUG_PRINT("Method intercept enabled");
+    } else {
+        zend_execute_ex = php_rayaop_original_execute_ex;
+        PHP_RAYAOP_DEBUG_PRINT("Method intercept disabled");
+    }
+}
 /* }}} */
 
 /* Interface definition */
@@ -451,7 +474,9 @@ PHP_MINIT_FUNCTION(rayaop) {
     ray_aop_method_interceptor_interface_ce = zend_register_internal_interface(&ce); /* Register interface */
 
     php_rayaop_original_execute_ex = zend_execute_ex; /* Save the original zend_execute_ex function */
-    zend_execute_ex = php_rayaop_execute_ex; /* Set the custom zend_execute_ex function */
+
+    /** disenable interceptiong */
+    RAYAOP_G(method_intercept_enabled) = 0;
 
     PHP_RAYAOP_DEBUG_PRINT("RayAOP extension initialized"); /* Output debug information */
     return SUCCESS; /* Return success */
@@ -468,8 +493,13 @@ PHP_MINIT_FUNCTION(rayaop) {
 */
 PHP_MSHUTDOWN_FUNCTION(rayaop) {
     PHP_RAYAOP_DEBUG_PRINT("RayAOP PHP_MSHUTDOWN_FUNCTION called"); /* Output debug information */
-    zend_execute_ex = php_rayaop_original_execute_ex; /* Restore the original zend_execute_ex function */
-    php_rayaop_original_execute_ex = NULL; /* Clear the saved pointer */
+    if (php_rayaop_original_execute_ex) {
+        PHP_RAYAOP_DEBUG_PRINT("Restoring original execute_ex");
+        zend_execute_ex = php_rayaop_original_execute_ex; /* Restore the original zend_execute_ex function */
+        php_rayaop_original_execute_ex = NULL; /* Clear the saved pointer */
+    } else {
+        PHP_RAYAOP_DEBUG_PRINT("Original execute_ex was already NULL");
+    }
     PHP_RAYAOP_DEBUG_PRINT("RayAOP PHP_MSHUTDOWN_FUNCTION shut down"); /* Output debug information */
     return SUCCESS; /* Return shutdown success */
 }
@@ -561,6 +591,8 @@ static void php_rayaop_dump_intercept_info(void)
 static const zend_function_entry rayaop_functions[] = {
     PHP_FE(method_intercept, arginfo_method_intercept) /* Register method_intercept function */
     PHP_FE(method_intercept_init, arginfo_method_intercept_init) /* Register method_intercept_init function */
+    PHP_FE(enable_method_intercept, arginfo_enable_method_intercept) /* Register enable_method_intercept function */
+
     PHP_FE_END /* End of function entries */
 };
 
