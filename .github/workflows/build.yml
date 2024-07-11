@@ -34,9 +34,13 @@ jobs:
           ./configure
           make
 
+      - name: Create php.ini
+        run: |
+          echo "extension=$(pwd)/modules/rayaop.so" > php.ini
+
       - name: Run tests
         id: run_tests
-        run: make test
+        run: PHP_INI_SCAN_DIR=$(pwd) make test
         continue-on-error: true
 
       - name: Run demo with debug logging
