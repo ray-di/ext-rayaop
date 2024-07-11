@@ -92,4 +92,6 @@ ZEND_END_MODULE_GLOBALS(rayaop) /* End of rayaop module global variables */
 #define RAYAOP_G(v) (rayaop_globals.v)
 #endif
 
+ZEND_EXTERN_MODULE_GLOBALS(rayaop)
+
 #endif /* End of header guard */
