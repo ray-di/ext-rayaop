@@ -8,7 +8,7 @@
 #define RAYAOP_QUIET 0
 #endif
 
-#define RAYAOP_DEBUG
+// #define RAYAOP_DEBUG
 
 #include "php_rayaop.h"  /* Include header file for RayAOP extension */
 
