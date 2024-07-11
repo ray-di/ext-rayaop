@@ -176,7 +176,11 @@ void php_rayaop_execute_intercept(zend_execute_data *execute_data, php_rayaop_in
     ZVAL_UNDEF(&retval);
     if (call_intercept_handler(&info->handler, params, &retval)) {
         if (!Z_ISUNDEF(retval)) {
-            ZVAL_COPY(execute_data->return_value, &retval);
+            if (execute_data->return_value) {
+                ZVAL_COPY(execute_data->return_value, &retval);
+            } else {
+                PHP_RAYAOP_DEBUG_PRINT("Warning: execute_data->return_value is NULL");
+            }
         }
     } else {
         php_error_docref(NULL, E_WARNING, "Interception failed for %s::%s", ZSTR_VAL(info->class_name), ZSTR_VAL(info->method_name));
@@ -227,7 +231,6 @@ static void php_rayaop_execute_ex(zend_execute_data *execute_data) {
     PHP_RAYAOP_DEBUG_PRINT("Execution depth: %d", RAYAOP_G(execution_depth));
 
     if (!php_rayaop_should_intercept(execute_data)) {
-        /* If interception is not necessary */
         PHP_RAYAOP_DEBUG_PRINT("Interception not necessary, calling original execute_ex function");
 
         // Debug information about execute_data
