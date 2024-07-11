@@ -64,6 +64,7 @@ PHP_RINIT_FUNCTION(rayaop); /* Request initialization function */
 PHP_RSHUTDOWN_FUNCTION(rayaop); /* Request shutdown function */
 PHP_MINFO_FUNCTION(rayaop); /* Module information function */
 PHP_FUNCTION(method_intercept); /* Method intercept function */
+PHP_FUNCTION(method_intercept_init); /* Add this line for the new function */
 
 /* Utility function declarations */
 void php_rayaop_handle_error(const char *message); /* Error handling function */

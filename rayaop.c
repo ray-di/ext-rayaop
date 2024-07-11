@@ -45,6 +45,10 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_method_intercept, 0, 0, 3)
     ZEND_ARG_OBJ_INFO(0, interceptor, Ray\\Aop\\MethodInterceptorInterface, 0) /* Argument information for intercept handler */
 ZEND_END_ARG_INFO()
 
+/* Argument information for method_intercept_init function */
+ZEND_BEGIN_ARG_INFO(arginfo_method_intercept_init, 0)
+ZEND_END_ARG_INFO()
+
 /* {{{ proto void php_rayaop_handle_error(const char *message)
    Error handling function
 
@@ -306,6 +310,24 @@ RETURN_FALSE; /* Return false and end */
 }
 /* }}} */
 
+/* {{{ proto void method_intercept_init()
+   Function to reset intercept table
+
+   This function clears the intercept hash table, ensuring it starts empty.
+
+*/
+PHP_FUNCTION(method_intercept_init) {
+    PHP_RAYAOP_DEBUG_PRINT("method_intercept_init called"); /* Output debug information */
+    if (RAYAOP_G(intercept_ht)) {
+        zend_hash_clean(RAYAOP_G(intercept_ht)); /* Clear hash table */
+    } else {
+        ALLOC_HASHTABLE(RAYAOP_G(intercept_ht)); /* Allocate memory for hash table if not already allocated */
+        zend_hash_init(RAYAOP_G(intercept_ht), 8, NULL, php_rayaop_free_intercept_info, 0); /* Initialize hash table */
+    }
+    RETURN_TRUE; /* Return true to indicate success */
+}
+/* }}} */
+
 /* Interface definition */
 zend_class_entry *ray_aop_method_interceptor_interface_ce;
 
@@ -456,6 +478,7 @@ static void php_rayaop_dump_intercept_info(void)
 /* Definition of functions provided by the extension */
 static const zend_function_entry rayaop_functions[] = {
     PHP_FE(method_intercept, arginfo_method_intercept) /* Register method_intercept function */
+    PHP_FE(method_intercept_init, arginfo_method_intercept_init) /* Register method_intercept_init function */
     PHP_FE_END /* End of function entries */
 };
 
