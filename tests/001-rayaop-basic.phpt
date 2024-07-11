@@ -18,6 +18,7 @@ class TestInterceptor implements Ray\Aop\MethodInterceptorInterface {
 
 // Register the interceptor
 $result = method_intercept(TestClass::class, 'testMethod', new TestInterceptor());
+enable_method_intercept(true);
 var_dump($result);
 
 // Call the intercepted method
