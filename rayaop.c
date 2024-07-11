@@ -28,6 +28,7 @@ static void (*php_rayaop_original_execute_ex)(zend_execute_data *execute_data);
 static void php_rayaop_init_globals(zend_rayaop_globals *rayaop_globals) {
     rayaop_globals->intercept_ht = NULL; /* Initialize intercept hash table */
     rayaop_globals->is_intercepting = 0; /* Initialize intercept flag */
+    rayaop_globals->execution_depth = 0;
 }
 /* }}} */
 
@@ -43,6 +44,15 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_method_intercept, 0, 0, 3)
     ZEND_ARG_TYPE_INFO(0, class_name, IS_STRING, 0) /* Argument information for class name */
     ZEND_ARG_TYPE_INFO(0, method_name, IS_STRING, 0) /* Argument information for method name */
     ZEND_ARG_OBJ_INFO(0, interceptor, Ray\\Aop\\MethodInterceptorInterface, 0) /* Argument information for intercept handler */
+ZEND_END_ARG_INFO()
+
+/* Argument information for method_intercept_init function */
+ZEND_BEGIN_ARG_INFO(arginfo_method_intercept_init, 0)
+ZEND_END_ARG_INFO()
+
+/* Argument information for method_intercept_enable function */
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_enable_method_intercept, 0, 1, IS_VOID, 0)
+    ZEND_ARG_TYPE_INFO(0, enable, _IS_BOOL, 0)
 ZEND_END_ARG_INFO()
 
 /* {{{ proto void php_rayaop_handle_error(const char *message)
@@ -166,7 +176,11 @@ void php_rayaop_execute_intercept(zend_execute_data *execute_data, php_rayaop_in
     ZVAL_UNDEF(&retval);
     if (call_intercept_handler(&info->handler, params, &retval)) {
         if (!Z_ISUNDEF(retval)) {
-            ZVAL_COPY(execute_data->return_value, &retval);
+            if (execute_data->return_value) {
+                ZVAL_COPY(execute_data->return_value, &retval);
+            } else {
+                PHP_RAYAOP_DEBUG_PRINT("Warning: execute_data->return_value is NULL");
+            }
         }
     } else {
         php_error_docref(NULL, E_WARNING, "Interception failed for %s::%s", ZSTR_VAL(info->class_name), ZSTR_VAL(info->method_name));
@@ -207,18 +221,56 @@ void php_rayaop_free_intercept_info(zval *zv) {
 
    @param zend_execute_data *execute_data The execution data
 */
+
 static void php_rayaop_execute_ex(zend_execute_data *execute_data) {
     PHP_RAYAOP_DEBUG_PRINT("php_rayaop_execute_ex called"); /* Output debug information */
 
+    // 実行深度を増加させ、ログに記録
+    RAYAOP_G(execution_depth)++;
+
+    PHP_RAYAOP_DEBUG_PRINT("Execution depth: %d", RAYAOP_G(execution_depth));
+
     if (!php_rayaop_should_intercept(execute_data)) {
-        /* If interception is not necessary */
+        PHP_RAYAOP_DEBUG_PRINT("Interception not necessary, calling original execute_ex function");
+
+        // Debug information about execute_data
+        if (execute_data == NULL) {
+            PHP_RAYAOP_DEBUG_PRINT("execute_data is NULL");
+        } else {
+            if (execute_data->func == NULL) {
+                PHP_RAYAOP_DEBUG_PRINT("execute_data->func is NULL");
+            } else {
+                if (execute_data->func->common.function_name == NULL) {
+                    PHP_RAYAOP_DEBUG_PRINT("execute_data->func->common.function_name is NULL");
+                } else {
+                    PHP_RAYAOP_DEBUG_PRINT("Function name: %s", ZSTR_VAL(execute_data->func->common.function_name));
+                }
+
+                if (execute_data->func->common.scope == NULL) {
+                    PHP_RAYAOP_DEBUG_PRINT("execute_data->func->common.scope is NULL");
+                } else {
+                    PHP_RAYAOP_DEBUG_PRINT("Class name: %s", ZSTR_VAL(execute_data->func->common.scope->name));
+                }
+            }
+        }
+
+        PHP_RAYAOP_DEBUG_PRINT("Calling original execute_ex function");
+
+        if (php_rayaop_original_execute_ex == NULL) {
+            PHP_RAYAOP_DEBUG_PRINT("php_rayaop_original_execute_ex is NULL");
+        }
+
         php_rayaop_original_execute_ex(execute_data); /* Call the original execution function */
+        RAYAOP_G(execution_depth)--;
+
         return; /* End processing */
     }
 
     zend_function *current_function = execute_data->func; /* Get current function information */
     zend_string *class_name = current_function->common.scope->name; /* Get class name */
     zend_string *method_name = current_function->common.function_name; /* Get method name */
+
+    PHP_RAYAOP_DEBUG_PRINT("Function: %s::%s", ZSTR_VAL(class_name), ZSTR_VAL(method_name));
 
     size_t key_len;
     char *key = php_rayaop_generate_intercept_key(class_name, method_name, &key_len); /* Generate intercept key */
@@ -232,11 +284,52 @@ static void php_rayaop_execute_ex(zend_execute_data *execute_data) {
     } else {
         /* If intercept information is not found */
         PHP_RAYAOP_DEBUG_PRINT("No intercept info found for key: %s", key); /* Output debug information */
-        php_rayaop_original_execute_ex(execute_data); /* Call the original execution function */
+        PHP_RAYAOP_DEBUG_PRINT("Calling original execute_ex function");
+
+        // Debug information about execute_data before calling the original function
+        if (execute_data == NULL) {
+            PHP_RAYAOP_DEBUG_PRINT("execute_data is NULL");
+        } else {
+            if (execute_data->func == NULL) {
+                PHP_RAYAOP_DEBUG_PRINT("execute_data->func is NULL");
+            } else {
+                if (execute_data->func->common.function_name == NULL) {
+                    PHP_RAYAOP_DEBUG_PRINT("execute_data->func->common.function_name is NULL");
+                } else {
+                    PHP_RAYAOP_DEBUG_PRINT("Function name: %s", ZSTR_VAL(execute_data->func->common.function_name));
+                }
+
+                if (execute_data->func->common.scope == NULL) {
+                    PHP_RAYAOP_DEBUG_PRINT("execute_data->func->common.scope is NULL");
+                } else {
+                    PHP_RAYAOP_DEBUG_PRINT("Class name: %s", ZSTR_VAL(execute_data->func->common.scope->name));
+                }
+            }
+        }
+
+        if (php_rayaop_original_execute_ex == NULL) {
+            PHP_RAYAOP_DEBUG_PRINT("php_rayaop_original_execute_ex is NULL");
+        }
+        PHP_RAYAOP_DEBUG_PRINT("Origilan method calling...");
+        if (execute_data == NULL || execute_data->func == NULL || php_rayaop_original_execute_ex == NULL) {
+            PHP_RAYAOP_DEBUG_PRINT("Invalid pointers detected");
+            // エラー処理
+            return;
+        }
+        PHP_RAYAOP_DEBUG_PRINT("Calling original execute_ex. execute_data: %p, func: %p, original_execute_ex: %p",
+                       (void*)execute_data,
+                       (void*)(execute_data ? execute_data->func : NULL),
+                       (void*)php_rayaop_original_execute_ex);
+        php_rayaop_original_execute_ex(execute_data);
+        /* Call the original execution function */
+        PHP_RAYAOP_DEBUG_PRINT("Origilan method called sucsessfully!");
+
     }
 
     efree(key); /* Free memory for key */
+    RAYAOP_G(execution_depth)--;
 }
+
 /* }}} */
 
 /* {{{ proto void php_rayaop_hash_update_failed(php_rayaop_intercept_info *new_info, char *key)
@@ -306,6 +399,42 @@ RETURN_FALSE; /* Return false and end */
 }
 /* }}} */
 
+/* {{{ proto void method_intercept_init()
+   Function to reset intercept table
+
+   This function clears the intercept hash table, ensuring it starts empty.
+
+*/
+PHP_FUNCTION(method_intercept_init) {
+    PHP_RAYAOP_DEBUG_PRINT("method_intercept_init called"); /* Output debug information */
+    if (RAYAOP_G(intercept_ht)) {
+        zend_hash_clean(RAYAOP_G(intercept_ht)); /* Clear hash table */
+    } else {
+        ALLOC_HASHTABLE(RAYAOP_G(intercept_ht)); /* Allocate memory for hash table if not already allocated */
+        zend_hash_init(RAYAOP_G(intercept_ht), 8, NULL, php_rayaop_free_intercept_info, 0); /* Initialize hash table */
+    }
+    RETURN_TRUE; /* Return true to indicate success */
+}
+
+PHP_FUNCTION(enable_method_intercept)
+{
+    zend_bool enable;
+
+    ZEND_PARSE_PARAMETERS_START(1, 1)
+        Z_PARAM_BOOL(enable)
+    ZEND_PARSE_PARAMETERS_END();
+
+    RAYAOP_G(method_intercept_enabled) = enable;
+    if (enable) {
+        zend_execute_ex = php_rayaop_execute_ex;
+        PHP_RAYAOP_DEBUG_PRINT("Method intercept enabled");
+    } else {
+        zend_execute_ex = php_rayaop_original_execute_ex;
+        PHP_RAYAOP_DEBUG_PRINT("Method intercept disabled");
+    }
+}
+/* }}} */
+
 /* Interface definition */
 zend_class_entry *ray_aop_method_interceptor_interface_ce;
 
@@ -348,7 +477,9 @@ PHP_MINIT_FUNCTION(rayaop) {
     ray_aop_method_interceptor_interface_ce = zend_register_internal_interface(&ce); /* Register interface */
 
     php_rayaop_original_execute_ex = zend_execute_ex; /* Save the original zend_execute_ex function */
-    zend_execute_ex = php_rayaop_execute_ex; /* Set the custom zend_execute_ex function */
+
+    /** disenable interceptiong */
+    RAYAOP_G(method_intercept_enabled) = 0;
 
     PHP_RAYAOP_DEBUG_PRINT("RayAOP extension initialized"); /* Output debug information */
     return SUCCESS; /* Return success */
@@ -365,8 +496,13 @@ PHP_MINIT_FUNCTION(rayaop) {
 */
 PHP_MSHUTDOWN_FUNCTION(rayaop) {
     PHP_RAYAOP_DEBUG_PRINT("RayAOP PHP_MSHUTDOWN_FUNCTION called"); /* Output debug information */
-    zend_execute_ex = php_rayaop_original_execute_ex; /* Restore the original zend_execute_ex function */
-    php_rayaop_original_execute_ex = NULL; /* Clear the saved pointer */
+    if (php_rayaop_original_execute_ex) {
+        PHP_RAYAOP_DEBUG_PRINT("Restoring original execute_ex");
+        zend_execute_ex = php_rayaop_original_execute_ex; /* Restore the original zend_execute_ex function */
+        php_rayaop_original_execute_ex = NULL; /* Clear the saved pointer */
+    } else {
+        PHP_RAYAOP_DEBUG_PRINT("Original execute_ex was already NULL");
+    }
     PHP_RAYAOP_DEBUG_PRINT("RayAOP PHP_MSHUTDOWN_FUNCTION shut down"); /* Output debug information */
     return SUCCESS; /* Return shutdown success */
 }
@@ -388,6 +524,7 @@ PHP_RINIT_FUNCTION(rayaop) {
         zend_hash_init(RAYAOP_G(intercept_ht), 8, NULL, php_rayaop_free_intercept_info, 0); /* Initialize hash table */
     }
     RAYAOP_G(is_intercepting) = 0; /* Initialize intercept flag */
+    RAYAOP_G(execution_depth) = 0;
     return SUCCESS; /* Return success */
 }
 /* }}} */
@@ -456,6 +593,9 @@ static void php_rayaop_dump_intercept_info(void)
 /* Definition of functions provided by the extension */
 static const zend_function_entry rayaop_functions[] = {
     PHP_FE(method_intercept, arginfo_method_intercept) /* Register method_intercept function */
+    PHP_FE(method_intercept_init, arginfo_method_intercept_init) /* Register method_intercept_init function */
+    PHP_FE(enable_method_intercept, arginfo_enable_method_intercept) /* Register enable_method_intercept function */
+
     PHP_FE_END /* End of function entries */
 };
 

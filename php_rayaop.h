@@ -64,6 +64,7 @@ PHP_RINIT_FUNCTION(rayaop); /* Request initialization function */
 PHP_RSHUTDOWN_FUNCTION(rayaop); /* Request shutdown function */
 PHP_MINFO_FUNCTION(rayaop); /* Module information function */
 PHP_FUNCTION(method_intercept); /* Method intercept function */
+PHP_FUNCTION(method_intercept_init); /* Add this line for the new function */
 
 /* Utility function declarations */
 void php_rayaop_handle_error(const char *message); /* Error handling function */
@@ -82,6 +83,8 @@ ZEND_BEGIN_MODULE_GLOBALS(rayaop)
     /* Start of rayaop module global variables */
     HashTable *intercept_ht; /* Intercept hash table */
     zend_bool is_intercepting; /* Intercepting flag */
+    int execution_depth;
+    zend_bool method_intercept_enabled;
 ZEND_END_MODULE_GLOBALS(rayaop) /* End of rayaop module global variables */
 
 /* If in thread-safe mode, global variable access macro (thread-safe version) */
