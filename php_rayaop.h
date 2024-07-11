@@ -50,10 +50,6 @@ extern zend_module_entry rayaop_module_entry;
 #define PHP_RAYAOP_DEBUG_PRINT(fmt, ...)  /* Do nothing */
 #endif
 
-/* Error codes */
-#define RAYAOP_ERROR_MEMORY_ALLOCATION 1  /* Error code for memory allocation */
-#define RAYAOP_ERROR_HASH_UPDATE 2  /* Error code for hash update */
-
 /* Structure to hold intercept information */
 typedef struct _php_rayaop_intercept_info {
     zend_string *class_name; /* Class name to intercept */
@@ -79,7 +75,7 @@ void php_rayaop_free_intercept_info(zval *zv); /* Function to free intercept inf
 
 #ifdef RAYAOP_DEBUG  /* If debug mode is enabled */
 void php_rayaop_debug_print_zval(zval *value);  /* Function to debug print zval value */
-void php_rayaop_dump_intercept_info(void);  /* Function to dump intercept information */
+static void php_rayaop_dump_intercept_info(void);  /* Function to dump intercept information */
 #endif
 
 ZEND_BEGIN_MODULE_GLOBALS(rayaop)
@@ -95,5 +91,7 @@ ZEND_END_MODULE_GLOBALS(rayaop) /* End of rayaop module global variables */
 #else
 #define RAYAOP_G(v) (rayaop_globals.v)
 #endif
+
+ZEND_EXTERN_MODULE_GLOBALS(rayaop)
 
 #endif /* End of header guard */
