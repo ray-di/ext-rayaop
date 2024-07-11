@@ -223,103 +223,68 @@ void php_rayaop_free_intercept_info(zval *zv) {
 */
 
 static void php_rayaop_execute_ex(zend_execute_data *execute_data) {
-    PHP_RAYAOP_DEBUG_PRINT("php_rayaop_execute_ex called"); /* Output debug information */
+    if (execute_data->func && execute_data->func->common.function_name) {
+        const char *fname = ZSTR_VAL(execute_data->func->common.function_name);
+        const char *class_name = execute_data->func->common.scope ? ZSTR_VAL(execute_data->func->common.scope->name) : NULL;
 
-    // 実行深度を増加させ、ログに記録
+        // Skip specific functions
+        if (class_name && strcmp(class_name, "PhpToken") == 0 && strcmp(fname, "tokenize") == 0) {
+            PHP_RAYAOP_DEBUG_PRINT("Skipping PhpToken::tokenize");
+            php_rayaop_original_execute_ex(execute_data);
+            return;
+        }
+
+        if (class_name && strcmp(class_name, "PhpParser\\Parser\\Php8") == 0 && strcmp(fname, "{closure}") == 0) {
+            PHP_RAYAOP_DEBUG_PRINT("Skipping PhpParser\\Parser\\Php8::{closure}");
+            php_rayaop_original_execute_ex(execute_data);
+            return;
+        }
+
+        if (class_name && strcmp(class_name, "PHPUnit\\Framework\\TestCase") == 0 && strcmp(fname, "startOutputBuffering") == 0) {
+            PHP_RAYAOP_DEBUG_PRINT("Skipping PHPUnit\\Framework\\TestCase::startOutputBuffering");
+            php_rayaop_original_execute_ex(execute_data);
+            return;
+        }
+    }
+
+    PHP_RAYAOP_DEBUG_PRINT("php_rayaop_execute_ex called");
+
     RAYAOP_G(execution_depth)++;
 
     PHP_RAYAOP_DEBUG_PRINT("Execution depth: %d", RAYAOP_G(execution_depth));
 
     if (!php_rayaop_should_intercept(execute_data)) {
         PHP_RAYAOP_DEBUG_PRINT("Interception not necessary, calling original execute_ex function");
-
-        // Debug information about execute_data
-        if (execute_data == NULL) {
-            PHP_RAYAOP_DEBUG_PRINT("execute_data is NULL");
-        } else {
-            if (execute_data->func == NULL) {
-                PHP_RAYAOP_DEBUG_PRINT("execute_data->func is NULL");
-            } else {
-                if (execute_data->func->common.function_name == NULL) {
-                    PHP_RAYAOP_DEBUG_PRINT("execute_data->func->common.function_name is NULL");
-                } else {
-                    PHP_RAYAOP_DEBUG_PRINT("Function name: %s", ZSTR_VAL(execute_data->func->common.function_name));
-                }
-
-                if (execute_data->func->common.scope == NULL) {
-                    PHP_RAYAOP_DEBUG_PRINT("execute_data->func->common.scope is NULL");
-                } else {
-                    PHP_RAYAOP_DEBUG_PRINT("Class name: %s", ZSTR_VAL(execute_data->func->common.scope->name));
-                }
-            }
-        }
-
-        PHP_RAYAOP_DEBUG_PRINT("Calling original execute_ex function");
-
-        if (php_rayaop_original_execute_ex == NULL) {
-            PHP_RAYAOP_DEBUG_PRINT("php_rayaop_original_execute_ex is NULL");
-        }
-
-        php_rayaop_original_execute_ex(execute_data); /* Call the original execution function */
+        php_rayaop_original_execute_ex(execute_data);
         RAYAOP_G(execution_depth)--;
-
-        return; /* End processing */
+        return;
     }
 
-    zend_function *current_function = execute_data->func; /* Get current function information */
-    zend_string *class_name = current_function->common.scope->name; /* Get class name */
-    zend_string *method_name = current_function->common.function_name; /* Get method name */
+    zend_function *current_function = execute_data->func;
+    zend_string *class_name = current_function->common.scope->name;
+    zend_string *method_name = current_function->common.function_name;
 
     PHP_RAYAOP_DEBUG_PRINT("Function: %s::%s", ZSTR_VAL(class_name), ZSTR_VAL(method_name));
 
     size_t key_len;
-    char *key = php_rayaop_generate_intercept_key(class_name, method_name, &key_len); /* Generate intercept key */
+    char *key = php_rayaop_generate_intercept_key(class_name, method_name, &key_len);
 
-    php_rayaop_intercept_info *info = php_rayaop_find_intercept_info(key, key_len); /* Search for intercept information */
+    php_rayaop_intercept_info *info = php_rayaop_find_intercept_info(key, key_len);
 
     if (info) {
-        /* If intercept information is found */
-        PHP_RAYAOP_DEBUG_PRINT("Found intercept info for key: %s", key); /* Output debug information */
-        php_rayaop_execute_intercept(execute_data, info); /* Execute interception */
-    } else {
-        /* If intercept information is not found */
-        PHP_RAYAOP_DEBUG_PRINT("No intercept info found for key: %s", key); /* Output debug information */
-        PHP_RAYAOP_DEBUG_PRINT("Calling original execute_ex function");
-
-        // Debug information about execute_data before calling the original function
-        if (execute_data == NULL) {
-            PHP_RAYAOP_DEBUG_PRINT("execute_data is NULL");
-        } else {
-            if (execute_data->func == NULL) {
-                PHP_RAYAOP_DEBUG_PRINT("execute_data->func is NULL");
-            } else {
-                if (execute_data->func->common.function_name == NULL) {
-                    PHP_RAYAOP_DEBUG_PRINT("execute_data->func->common.function_name is NULL");
-                } else {
-                    PHP_RAYAOP_DEBUG_PRINT("Function name: %s", ZSTR_VAL(execute_data->func->common.function_name));
-                }
-
-                if (execute_data->func->common.scope == NULL) {
-                    PHP_RAYAOP_DEBUG_PRINT("execute_data->func->common.scope is NULL");
-                } else {
-                    PHP_RAYAOP_DEBUG_PRINT("Class name: %s", ZSTR_VAL(execute_data->func->common.scope->name));
-                }
-            }
-        }
-
-        if (php_rayaop_original_execute_ex == NULL) {
-            PHP_RAYAOP_DEBUG_PRINT("php_rayaop_original_execute_ex is NULL");
-        }
-        PHP_RAYAOP_DEBUG_PRINT("Origilan method calling...");
-        if (execute_data == NULL || execute_data->func == NULL || php_rayaop_original_execute_ex == NULL) {
-            PHP_RAYAOP_DEBUG_PRINT("Invalid pointers detected");
-            // エラー処理
+        PHP_RAYAOP_DEBUG_PRINT("Found intercept info for key: %s", key);
+        if (RAYAOP_G(is_intercepting)) {
+            PHP_RAYAOP_DEBUG_PRINT("Already intercepting, skipping interception");
+            php_rayaop_original_execute_ex(execute_data);
+            efree(key);
             return;
         }
-        PHP_RAYAOP_DEBUG_PRINT("Calling original execute_ex. execute_data: %p, func: %p, original_execute_ex: %p",
-                       (void*)execute_data,
-                       (void*)(execute_data ? execute_data->func : NULL),
-                       (void*)php_rayaop_original_execute_ex);
+
+        RAYAOP_G(is_intercepting) = 1;
+        php_rayaop_execute_intercept(execute_data, info);
+        RAYAOP_G(is_intercepting) = 0;
+    } else {
+        PHP_RAYAOP_DEBUG_PRINT("No intercept info found for key: %s", key);
         php_rayaop_original_execute_ex(execute_data);
         /* Call the original execution function */
         PHP_RAYAOP_DEBUG_PRINT("Origilan method called sucsessfully!");
