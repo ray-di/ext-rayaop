@@ -50,10 +50,6 @@ extern zend_module_entry rayaop_module_entry;
 #define PHP_RAYAOP_DEBUG_PRINT(fmt, ...)  /* Do nothing */
 #endif
 
-/* Error codes */
-#define RAYAOP_ERROR_MEMORY_ALLOCATION 1  /* Error code for memory allocation */
-#define RAYAOP_ERROR_HASH_UPDATE 2  /* Error code for hash update */
-
 /* Structure to hold intercept information */
 typedef struct _php_rayaop_intercept_info {
     zend_string *class_name; /* Class name to intercept */
