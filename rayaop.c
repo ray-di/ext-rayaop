@@ -28,6 +28,7 @@ static void (*php_rayaop_original_execute_ex)(zend_execute_data *execute_data);
 static void php_rayaop_init_globals(zend_rayaop_globals *rayaop_globals) {
     rayaop_globals->intercept_ht = NULL; /* Initialize intercept hash table */
     rayaop_globals->is_intercepting = 0; /* Initialize intercept flag */
+    rayaop_globals->execution_depth = 0;
 }
 /* }}} */
 
@@ -215,6 +216,11 @@ void php_rayaop_free_intercept_info(zval *zv) {
 static void php_rayaop_execute_ex(zend_execute_data *execute_data) {
     PHP_RAYAOP_DEBUG_PRINT("php_rayaop_execute_ex called"); /* Output debug information */
 
+    // 実行深度を増加させ、ログに記録
+    RAYAOP_G(execution_depth)++;
+
+    PHP_RAYAOP_DEBUG_PRINT("Execution depth: %d", RAYAOP_G(execution_depth));
+
     if (!php_rayaop_should_intercept(execute_data)) {
         /* If interception is not necessary */
         PHP_RAYAOP_DEBUG_PRINT("Interception not necessary, calling original execute_ex function");
@@ -247,6 +253,8 @@ static void php_rayaop_execute_ex(zend_execute_data *execute_data) {
         }
 
         php_rayaop_original_execute_ex(execute_data); /* Call the original execution function */
+        RAYAOP_G(execution_depth)--;
+
         return; /* End processing */
     }
 
@@ -311,6 +319,7 @@ static void php_rayaop_execute_ex(zend_execute_data *execute_data) {
     }
 
     efree(key); /* Free memory for key */
+    RAYAOP_G(execution_depth)--;
 }
 
 /* }}} */
@@ -482,6 +491,7 @@ PHP_RINIT_FUNCTION(rayaop) {
         zend_hash_init(RAYAOP_G(intercept_ht), 8, NULL, php_rayaop_free_intercept_info, 0); /* Initialize hash table */
     }
     RAYAOP_G(is_intercepting) = 0; /* Initialize intercept flag */
+    RAYAOP_G(execution_depth) = 0;
     return SUCCESS; /* Return success */
 }
 /* }}} */
