@@ -41,4 +41,17 @@ if test "$PHP_RAYAOP" != "no"; then
   if test "$PHP_RAYAOP_QUIET" != "no"; then
       AC_DEFINE(RAYAOP_QUIET, 1, [Whether to suppress experimental notices])
   fi
+
+  dnl Add AddressSanitizer flags
+  dnl Add the AddressSanitizer runtime library path
+  PHP_ADD_LIBRARY_WITH_PATH(clang_rt.asan_osx_dynamic, /opt/homebrew/opt/llvm/lib/clang/14.0.0/lib/darwin, RAYAOP_SHARED_LIBADD)
+  AC_DEFINE(HAVE_ASAN, 1, [Define if you have AddressSanitizer])
+
+  dnl Add compiler and linker flags
+  CFLAGS="$CFLAGS -fsanitize=address"
+  LDFLAGS="$LDFLAGS -fsanitize=address"
+
+  dnl Add include and library paths
+  PHP_ADD_INCLUDE(/opt/homebrew/opt/llvm/include)
+  PHP_ADD_LIBRARY_DIR(/opt/homebrew/opt/llvm/lib)
 fi
