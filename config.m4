@@ -44,14 +44,14 @@ if test "$PHP_RAYAOP" != "no"; then
 
   dnl Add AddressSanitizer flags
   dnl Add the AddressSanitizer runtime library path
-  PHP_ADD_LIBRARY_WITH_PATH(clang_rt.asan_osx_dynamic, /opt/homebrew/opt/llvm/lib/clang/14.0.0/lib/darwin, RAYAOP_SHARED_LIBADD)
+  PHP_ADD_LIBRARY_WITH_PATH([clang_rt.asan_osx_dynamic], [/opt/homebrew/opt/llvm/lib/clang/14.0.0/lib/darwin], [RAYAOP_SHARED_LIBADD])
   AC_DEFINE(HAVE_ASAN, 1, [Define if you have AddressSanitizer])
 
   dnl Add compiler and linker flags
-  CFLAGS="$CFLAGS -fsanitize=address"
-  LDFLAGS="$LDFLAGS -fsanitize=address"
+  CFLAGS="-g -O0 -fsanitize=address $CFLAGS"
+  LDFLAGS="-fsanitize=address $LDFLAGS"
 
   dnl Add include and library paths
-  PHP_ADD_INCLUDE(/opt/homebrew/opt/llvm/include)
-  PHP_ADD_LIBRARY_DIR(/opt/homebrew/opt/llvm/lib)
+  PHP_ADD_INCLUDE([/opt/homebrew/opt/llvm/include])
+  PHP_ADD_LIBPATH([/opt/homebrew/opt/llvm/lib])
 fi
