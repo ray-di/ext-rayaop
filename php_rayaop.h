@@ -7,7 +7,7 @@
 #include "config.h"
 #endif
 
-#include "php.h"  /* Include PHP core header file */
+// #include "php.h"  /* Include PHP core header file */
 #include "php_ini.h"  /* Include PHP INI related header file */
 #include "ext/standard/info.h"  /* Include standard extension module information related header */
 #include "zend_exceptions.h"  /* Include Zend exception handling related header */
