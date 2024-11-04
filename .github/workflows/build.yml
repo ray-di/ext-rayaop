@@ -82,7 +82,7 @@ jobs:
 
       - name: Upload Valgrind log file
         if: (steps.run_tests.outcome == 'failure' || steps.run_demo.outcome == 'failure') && always()
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: valgrind-log
           path: valgrind-out.txt
@@ -90,7 +90,7 @@ jobs:
 
       - name: Upload test logs
         if: failure()
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: test-logs
           path: |
