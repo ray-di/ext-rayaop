@@ -25,7 +25,8 @@
 #include "TSRM.h"
 #endif
 
-/* Version and namespace definitions */
+/* Constants */
+#define MAX_EXECUTION_DEPTH 100
 #define PHP_RAYAOP_VERSION "1.0.0"
 #define RAYAOP_NS "Ray\\Aop\\"
 
@@ -34,6 +35,20 @@
 #define RAYAOP_E_HASH_UPDATE      2
 #define RAYAOP_E_INVALID_HANDLER  3
 #define RAYAOP_E_MAX_DEPTH_EXCEEDED 4
+
+/* Argument information declarations */
+ZEND_BEGIN_ARG_INFO_EX(arginfo_method_intercept, 0, 0, 3)
+    ZEND_ARG_TYPE_INFO(0, class_name, IS_STRING, 0)
+    ZEND_ARG_TYPE_INFO(0, method_name, IS_STRING, 0)
+    ZEND_ARG_OBJ_INFO(0, interceptor, Ray\\Aop\\MethodInterceptorInterface, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO(arginfo_method_intercept_init, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_enable_method_intercept, 0, 1, IS_VOID, 0)
+    ZEND_ARG_TYPE_INFO(0, enable, _IS_BOOL, 0)
+ZEND_END_ARG_INFO()
 
 /* Debug mode configuration */
 #ifdef RAYAOP_DEBUG
@@ -57,6 +72,9 @@
 /* Module entry */
 extern zend_module_entry rayaop_module_entry;
 #define phpext_rayaop_ptr &rayaop_module_entry
+
+/* Interface class entry */
+extern zend_class_entry *ray_aop_method_interceptor_interface_ce;
 
 /* Windows DLL export */
 #ifdef PHP_WIN32
