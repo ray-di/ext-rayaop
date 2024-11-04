@@ -7,11 +7,32 @@
 /* Module globals initialization */
 ZEND_DECLARE_MODULE_GLOBALS(rayaop)
 
-/* Original zend_execute_ex function pointer */
+/* Global variable declarations */
+zend_class_entry *ray_aop_method_interceptor_interface_ce;
 static void (*php_rayaop_original_execute_ex)(zend_execute_data *execute_data) = NULL;
 
-/* Maximum execution depth to prevent infinite recursion */
-#define MAX_EXECUTION_DEPTH 100
+/* Argument information for the interceptor method */
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_ray_aop_method_interceptor_intercept, 0, 3, IS_MIXED, 0)
+    ZEND_ARG_TYPE_INFO(0, object, IS_OBJECT, 0)
+    ZEND_ARG_TYPE_INFO(0, method, IS_STRING, 0)
+    ZEND_ARG_TYPE_INFO(0, params, IS_ARRAY, 0)
+ZEND_END_ARG_INFO()
+
+/* Interface methods */
+static zend_function_entry ray_aop_method_interceptor_interface_methods[] = {
+    PHP_ABSTRACT_ME(Ray_Aop_MethodInterceptorInterface, intercept, arginfo_ray_aop_method_interceptor_intercept)
+    PHP_FE_END
+};
+
+/* Module function declarations */
+static const zend_function_entry rayaop_functions[] = {
+    PHP_FE(method_intercept, arginfo_method_intercept)
+    PHP_FE(method_intercept_init, arginfo_method_intercept_init)
+    PHP_FE(enable_method_intercept, arginfo_enable_method_intercept)
+    PHP_FE_END
+};
+
+
 
 /* Module globals initializer */
 static void php_rayaop_init_globals(zend_rayaop_globals *globals) {
@@ -22,29 +43,23 @@ static void php_rayaop_init_globals(zend_rayaop_globals *globals) {
     globals->debug_level = 0;
 }
 
-/* Error code handling */
-static const char *php_rayaop_get_error_message(int error_code) {
-    switch (error_code) {
-        case RAYAOP_E_MEMORY_ALLOCATION:
-            return "Memory allocation failed";
-        case RAYAOP_E_HASH_UPDATE:
-            return "Hash table update failed";
-        case RAYAOP_E_INVALID_HANDLER:
-            return "Invalid handler";
-        case RAYAOP_E_MAX_DEPTH_EXCEEDED:
-            return "Maximum execution depth exceeded";
-        default:
-            return "Unknown error";
-    }
-}
-
 /* Error handling function */
 PHP_RAYAOP_API void php_rayaop_handle_error(int error_code, const char *message) {
-    const char *error_type = php_rayaop_get_error_message(error_code);
-    if (message) {
-        php_error_docref(NULL, E_ERROR, "RayAOP Error (%s): %s", error_type, message);
-    } else {
-        php_error_docref(NULL, E_ERROR, "RayAOP Error: %s", error_type);
+    switch (error_code) {
+        case RAYAOP_E_MEMORY_ALLOCATION:
+            php_error_docref(NULL, E_ERROR, "Memory allocation failed: %s", message);
+            break;
+        case RAYAOP_E_HASH_UPDATE:
+            php_error_docref(NULL, E_ERROR, "Hash table update failed: %s", message);
+            break;
+        case RAYAOP_E_INVALID_HANDLER:
+            php_error_docref(NULL, E_WARNING, "Invalid handler: %s", message);
+            break;
+        case RAYAOP_E_MAX_DEPTH_EXCEEDED:
+            php_error_docref(NULL, E_WARNING, "Maximum execution depth exceeded: %s", message);
+            break;
+        default:
+            php_error_docref(NULL, E_ERROR, "RayAOP Error (%d): %s", error_code, message);
     }
 }
 
@@ -82,7 +97,7 @@ PHP_RAYAOP_API bool php_rayaop_should_intercept(zend_execute_data *execute_data)
     }
 
     if (RAYAOP_G(execution_depth) >= MAX_EXECUTION_DEPTH) {
-        php_rayaop_handle_error(RAYAOP_E_MAX_DEPTH_EXCEEDED, NULL);
+        php_rayaop_handle_error(RAYAOP_E_MAX_DEPTH_EXCEEDED, "Maximum execution depth reached");
         return false;
     }
 
@@ -153,10 +168,15 @@ static bool execute_intercept_handler(zval *handler, zval *params, zval *retval)
 
     return success;
 }
-/* Core interception execution function */
+
+/* Fixed rayaop_execute_ex function */
 static void rayaop_execute_ex(zend_execute_data *execute_data) {
     if (!php_rayaop_should_intercept(execute_data)) {
-        php_rayaop_original_execute_ex(execute_data);
+        if (php_rayaop_original_execute_ex) {
+            php_rayaop_original_execute_ex(execute_data);
+        } else {
+            zend_execute_ex(execute_data);
+        }
         return;
     }
 
@@ -173,7 +193,9 @@ static void rayaop_execute_ex(zend_execute_data *execute_data) {
 
         if (Z_TYPE(info->handler) != IS_OBJECT) {
             php_rayaop_handle_error(RAYAOP_E_INVALID_HANDLER, "Invalid interceptor type");
-            php_rayaop_original_execute_ex(execute_data);
+            if (php_rayaop_original_execute_ex) {
+                php_rayaop_original_execute_ex(execute_data);
+            }
         } else {
             zval retval;
             zval params[3];
@@ -183,7 +205,7 @@ static void rayaop_execute_ex(zend_execute_data *execute_data) {
 
             ZVAL_UNDEF(&retval);
             if (execute_intercept_handler(&info->handler, params, &retval)) {
-                if (!Z_ISUNDEF(retval)) {
+                if (!Z_ISUNDEF(retval) && execute_data->return_value) {
                     ZVAL_COPY(execute_data->return_value, &retval);
                 }
                 zval_ptr_dtor(&retval);
@@ -193,27 +215,14 @@ static void rayaop_execute_ex(zend_execute_data *execute_data) {
             RAYAOP_G(is_intercepting) = 0;
         }
     } else {
-        php_rayaop_original_execute_ex(execute_data);
+        if (php_rayaop_original_execute_ex) {
+            php_rayaop_original_execute_ex(execute_data);
+        }
     }
 
     efree(key);
     RAYAOP_G(execution_depth)--;
 }
-
-/* Method interceptor interface arguments */
-ZEND_BEGIN_ARG_INFO_EX(arginfo_method_intercept, 0, 0, 3)
-    ZEND_ARG_TYPE_INFO(0, class_name, IS_STRING, 0)
-    ZEND_ARG_TYPE_INFO(0, method_name, IS_STRING, 0)
-    ZEND_ARG_OBJ_INFO(0, interceptor, Ray\\Aop\\MethodInterceptorInterface, 0)
-ZEND_END_ARG_INFO()
-
-ZEND_BEGIN_ARG_INFO(arginfo_method_intercept_init, 0)
-ZEND_END_ARG_INFO()
-
-ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_enable_method_intercept, 0, 1, IS_VOID, 0)
-    ZEND_ARG_TYPE_INFO(0, enable, _IS_BOOL, 0)
-ZEND_END_ARG_INFO()
-
 /* Implementation of method_intercept function */
 PHP_FUNCTION(method_intercept) {
     char *class_name, *method_name;
@@ -261,14 +270,19 @@ PHP_FUNCTION(method_intercept) {
     RETURN_TRUE;
 }
 
-/* Implementation of method_intercept_init function */
+/* method_intercept_init function fix */
 PHP_FUNCTION(method_intercept_init) {
     RAYAOP_G_LOCK();
     if (RAYAOP_G(intercept_ht)) {
         zend_hash_clean(RAYAOP_G(intercept_ht));
     } else {
         ALLOC_HASHTABLE(RAYAOP_G(intercept_ht));
-        zend_hash_init(RAYAOP_G(intercept_ht), 8, NULL, php_rayaop_free_intercept_info, 0);
+        if (!RAYAOP_G(intercept_ht)) {
+            RAYAOP_G_UNLOCK();
+            php_rayaop_handle_error(RAYAOP_E_MEMORY_ALLOCATION, "Failed to allocate intercept hash table");
+            RETURN_FALSE;
+        }
+        zend_hash_init(RAYAOP_G(intercept_ht), 8, NULL, (dtor_func_t)php_rayaop_free_intercept_info, 0);
     }
     RAYAOP_G_UNLOCK();
     RETURN_TRUE;
@@ -302,19 +316,20 @@ PHP_MINIT_FUNCTION(rayaop) {
     php_rayaop_init_globals(&rayaop_globals);
 #endif
 
+    // Register the interface
     zend_class_entry ce;
-    INIT_CLASS_ENTRY(ce, "Ray\\Aop\\MethodInterceptorInterface", NULL);
-    zend_class_entry *interface_ce = zend_register_internal_interface(&ce);
+    INIT_NS_CLASS_ENTRY(ce, "Ray\\Aop", "MethodInterceptorInterface", ray_aop_method_interceptor_interface_methods);
+    ray_aop_method_interceptor_interface_ce = zend_register_internal_interface(&ce);
 
+    // Initialize other settings
+    RAYAOP_G(method_intercept_enabled) = 1;
+    RAYAOP_G(debug_level) = 0;
     php_rayaop_original_execute_ex = zend_execute_ex;
-    RAYAOP_G(method_intercept_enabled) = 0;
-
-    REGISTER_LONG_CONSTANT("RAYAOP_DEBUG_LEVEL_NONE", 0, CONST_CS | CONST_PERSISTENT);
-    REGISTER_LONG_CONSTANT("RAYAOP_DEBUG_LEVEL_BASIC", 1, CONST_CS | CONST_PERSISTENT);
-    REGISTER_LONG_CONSTANT("RAYAOP_DEBUG_LEVEL_VERBOSE", 2, CONST_CS | CONST_PERSISTENT);
+    zend_execute_ex = rayaop_execute_ex;
 
     return SUCCESS;
 }
+
 
 /* Module shutdown */
 PHP_MSHUTDOWN_FUNCTION(rayaop) {
@@ -324,12 +339,17 @@ PHP_MSHUTDOWN_FUNCTION(rayaop) {
     return SUCCESS;
 }
 
-/* Request initialization */
+/* Request initialization function fix */
 PHP_RINIT_FUNCTION(rayaop) {
     RAYAOP_G_LOCK();
     if (!RAYAOP_G(intercept_ht)) {
         ALLOC_HASHTABLE(RAYAOP_G(intercept_ht));
-        zend_hash_init(RAYAOP_G(intercept_ht), 8, NULL, php_rayaop_free_intercept_info, 0);
+        if (!RAYAOP_G(intercept_ht)) {
+            RAYAOP_G_UNLOCK();
+            php_rayaop_handle_error(RAYAOP_E_MEMORY_ALLOCATION, "Failed to initialize intercept hash table");
+            return FAILURE;
+        }
+        zend_hash_init(RAYAOP_G(intercept_ht), 8, NULL, (dtor_func_t)php_rayaop_free_intercept_info, 0);
     }
     RAYAOP_G(is_intercepting) = 0;
     RAYAOP_G(execution_depth) = 0;
@@ -362,13 +382,67 @@ PHP_MINFO_FUNCTION(rayaop) {
     php_info_print_table_end();
 }
 
-/* Extension function entries */
-static const zend_function_entry rayaop_functions[] = {
-    PHP_FE(method_intercept, arginfo_method_intercept)
-    PHP_FE(method_intercept_init, arginfo_method_intercept_init)
-    PHP_FE(enable_method_intercept, arginfo_enable_method_intercept)
-    PHP_FE_END
-};
+#ifdef RAYAOP_DEBUG
+/* Debug functions */
+void php_rayaop_debug_print_zval(zval *value) {
+    if (!value) {
+        php_printf("NULL\n");
+        return;
+    }
+
+    switch (Z_TYPE_P(value)) {
+        case IS_NULL:
+            php_printf("NULL\n");
+            break;
+        case IS_TRUE:
+            php_printf("bool(true)\n");
+            break;
+        case IS_FALSE:
+            php_printf("bool(false)\n");
+            break;
+        case IS_LONG:
+            php_printf("int(%ld)\n", Z_LVAL_P(value));
+            break;
+        case IS_DOUBLE:
+            php_printf("float(%g)\n", Z_DVAL_P(value));
+            break;
+        case IS_STRING:
+            php_printf("string(%d) \"%s\"\n", Z_STRLEN_P(value), Z_STRVAL_P(value));
+            break;
+        case IS_ARRAY:
+            php_printf("array(%d) {...}\n", zend_hash_num_elements(Z_ARRVAL_P(value)));
+            break;
+        case IS_OBJECT:
+            php_printf("object(%s)#%d {...}\n",
+                Z_OBJCE_P(value)->name->val, Z_OBJ_HANDLE_P(value));
+            break;
+        default:
+            php_printf("unknown type(%d)\n", Z_TYPE_P(value));
+    }
+}
+
+void php_rayaop_debug_dump_intercept_info(void) {
+    RAYAOP_G_LOCK();
+    if (RAYAOP_G(intercept_ht)) {
+        php_printf("=== Intercept Information Dump ===\n");
+        php_rayaop_intercept_info *info;
+        zend_string *key;
+        ZEND_HASH_FOREACH_STR_KEY_PTR(RAYAOP_G(intercept_ht), key, info) {
+            if (key && info) {
+                php_printf("Key: %s\n", ZSTR_VAL(key));
+                php_printf("  Class: %s\n", ZSTR_VAL(info->class_name));
+                php_printf("  Method: %s\n", ZSTR_VAL(info->method_name));
+                php_printf("  Enabled: %d\n", info->is_enabled);
+                php_printf("  Handler type: %d\n", Z_TYPE(info->handler));
+            }
+        } ZEND_HASH_FOREACH_END();
+        php_printf("================================\n");
+    } else {
+        php_printf("No intercept information available\n");
+    }
+    RAYAOP_G_UNLOCK();
+}
+#endif
 
 /* Module entry */
 zend_module_entry rayaop_module_entry = {
