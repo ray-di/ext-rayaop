@@ -15,7 +15,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Set up PHP ${{ matrix.php-version }}
         uses: shivammathur/setup-php@v2
@@ -34,9 +34,13 @@ jobs:
           ./configure
           make
 
+      - name: Create php.ini
+        run: |
+          echo "extension=$(pwd)/modules/rayaop.so" > php.ini
+
       - name: Run tests
         id: run_tests
-        run: make test
+        run: PHP_INI_SCAN_DIR=$(pwd) make test
         continue-on-error: true
 
       - name: Run demo with debug logging
@@ -78,7 +82,7 @@ jobs:
 
       - name: Upload Valgrind log file
         if: (steps.run_tests.outcome == 'failure' || steps.run_demo.outcome == 'failure') && always()
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: valgrind-log
           path: valgrind-out.txt
@@ -86,7 +90,7 @@ jobs:
 
       - name: Upload test logs
         if: failure()
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: test-logs
           path: |

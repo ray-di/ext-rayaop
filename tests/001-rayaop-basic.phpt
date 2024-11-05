@@ -1,31 +1,47 @@
 --TEST--
 RayAOP basic functionality
+--SKIPIF--
+<?php
+if (!extension_loaded('rayaop')) {
+    echo 'skip rayaop extension not loaded';
+}
+?>
 --FILE--
 <?php
+var_dump(interface_exists('\Ray\Aop\MethodInterceptorInterface'));
 
-// Define test class and interceptor
-class TestClass {
-    public function testMethod($arg) {
-        return "Original: " . $arg;
-    }
-}
-
-class TestInterceptor implements Ray\Aop\MethodInterceptorInterface {
-    public function intercept(object $object, string $method, array $params): mixed {
+class TestInterceptor implements \Ray\Aop\MethodInterceptorInterface
+{
+    public function intercept(object $object, string $method, array $params): mixed
+    {
         return "Intercepted: " . $object->$method(...$params);
     }
 }
 
+class TestClass
+{
+    public function testMethod($param = '')
+    {
+        return "Original" . $param;
+    }
+}
+
+// Initialize the intercept table
+var_dump(method_intercept_init());
+
 // Register the interceptor
-$result = method_intercept(TestClass::class, 'testMethod', new TestInterceptor());
-var_dump($result);
+var_dump(method_intercept('TestClass', 'testMethod', new TestInterceptor()));
 
-// Call the intercepted method
 $test = new TestClass();
-$result = $test->testMethod("Hello");
-var_dump($result);
+echo $test->testMethod(" method called") . "\n";
 
+// Disable method interception
+method_intercept_enable(false);
+echo $test->testMethod(" method called without interception") . "\n";
 ?>
---EXPECTF--
+--EXPECT--
 bool(true)
-string(28) "Intercepted: Original: Hello"
+bool(true)
+bool(true)
+Intercepted: Original method called
+Original method called without interception
