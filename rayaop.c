@@ -203,6 +203,7 @@ static void rayaop_execute_ex(zend_execute_data *execute_data) {
 
             prepare_intercept_params(execute_data, params, info);
             if (!prepare_intercept_params(execute_data, params, info)) {
+                cleanup_intercept_params(params);
                 RAYAOP_G(is_intercepting) = 0;
                 if (php_rayaop_original_execute_ex) {
                     php_rayaop_original_execute_ex(execute_data);
