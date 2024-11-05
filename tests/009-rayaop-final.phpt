@@ -23,11 +23,21 @@ class TestInterceptor implements Ray\Aop\MethodInterceptorInterface {
 }
 
 method_intercept_init();
+// Verify initialization
+var_dump(method_intercept_enable());
+
 method_intercept(FinalTestClass::class, 'finalMethod', new TestInterceptor());
 
 $test = new FinalTestClass();
 $result = $test->finalMethod("test");
 echo "Result: $result\n";
+
+// Test edge case with null parameter
+$result = $test->finalMethod(null);
+echo "Null test: $result\n";
+
+// Cleanup
+method_intercept_enable(false);
 
 ?>
 --EXPECT--
