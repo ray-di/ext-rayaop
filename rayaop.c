@@ -151,6 +151,7 @@ static bool prepare_intercept_params(zend_execute_data *execute_data, zval *para
 }
 
 static void cleanup_intercept_params(zval *params) {
+    zval_ptr_dtor(&params[0]);
     zval_ptr_dtor(&params[1]);
     zval_ptr_dtor(&params[2]);
 }
