@@ -126,10 +126,10 @@ PHP_RAYAOP_API php_rayaop_intercept_info *php_rayaop_find_intercept_info(const c
 }
 
 /* Parameter preparation and cleanup */
-static void prepare_intercept_params(zend_execute_data *execute_data, zval *params, php_rayaop_intercept_info *info) {
+static bool prepare_intercept_params(zend_execute_data *execute_data, zval *params, php_rayaop_intercept_info *info) {
     if (!execute_data->This.value.obj) {
         php_rayaop_handle_error(RAYAOP_E_INVALID_HANDLER, "Object instance is NULL");
-        return;
+        return false;
     }
 
     ZVAL_OBJ(&params[0], execute_data->This.value.obj);
@@ -147,6 +147,7 @@ static void prepare_intercept_params(zend_execute_data *execute_data, zval *para
             }
         }
     }
+    return true;
 }
 
 static void cleanup_intercept_params(zval *params) {
@@ -201,6 +202,17 @@ static void rayaop_execute_ex(zend_execute_data *execute_data) {
             zval params[3];
 
             prepare_intercept_params(execute_data, params, info);
+            if (!prepare_intercept_params(execute_data, params, info)) {
+                RAYAOP_G(is_intercepting) = 0;
+                if (php_rayaop_original_execute_ex) {
+                    php_rayaop_original_execute_ex(execute_data);
+                } else {
+                    zend_execute_ex(execute_data);
+                }
+                efree(key);
+                RAYAOP_G(execution_depth)--;
+                return;
+            }
             RAYAOP_G(is_intercepting) = 1;
 
             ZVAL_UNDEF(&retval);
