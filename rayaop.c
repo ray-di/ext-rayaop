@@ -1,3 +1,7 @@
+#ifdef ZTS
+MUTEX_T rayaop_mutex;
+#endif
+
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
@@ -317,8 +321,16 @@ PHP_FUNCTION(method_intercept_enable) {
 /* Module initialization */
 PHP_MINIT_FUNCTION(rayaop) {
 #ifdef ZTS
+    /* First, allocate TSRMG */
     ts_allocate_id(&rayaop_globals_id, sizeof(zend_rayaop_globals),
                    (ts_allocate_ctor)php_rayaop_init_globals, NULL);
+
+    /* Then initialize mutex */
+    rayaop_mutex = tsrm_mutex_alloc();
+    if (!rayaop_mutex) {
+        php_error_docref(NULL, E_ERROR, "Failed to allocate mutex for RayAOP");
+        return FAILURE;
+    }
 #else
     php_rayaop_init_globals(&rayaop_globals);
 #endif
@@ -340,6 +352,14 @@ PHP_MINIT_FUNCTION(rayaop) {
 
 /* Module shutdown */
 PHP_MSHUTDOWN_FUNCTION(rayaop) {
+#ifdef ZTS
+    /* Free mutex */
+    if (rayaop_mutex) {
+        tsrm_mutex_free(rayaop_mutex);
+        rayaop_mutex = NULL;
+    }
+#endif
+
     if (php_rayaop_original_execute_ex) {
         zend_execute_ex = php_rayaop_original_execute_ex;
     }

@@ -62,10 +62,17 @@ ZEND_END_ARG_INFO()
 #define PHP_RAYAOP_DEBUG_PRINT(fmt, ...)
 #endif
 
-/* Thread safety macros */
+/* Declare mutex type */
+#if defined(WIN32)
+#define MUTEX_T HANDLE
+#else
+#define MUTEX_T pthread_mutex_t*
+#endif
+extern MUTEX_T rayaop_mutex;
+
 #ifdef ZTS
-#define RAYAOP_G_LOCK()   tsrm_mutex_lock(rayaop_globals_id)
-#define RAYAOP_G_UNLOCK() tsrm_mutex_unlock(rayaop_globals_id)
+#define RAYAOP_G_LOCK()   tsrm_mutex_lock(rayaop_mutex)
+#define RAYAOP_G_UNLOCK() tsrm_mutex_unlock(rayaop_mutex)
 #else
 #define RAYAOP_G_LOCK()
 #define RAYAOP_G_UNLOCK()
@@ -103,6 +110,9 @@ ZEND_BEGIN_MODULE_GLOBALS(rayaop)
     zend_bool method_intercept_enabled;  /* Global interception enable flag */
     uint32_t debug_level;        /* Debug level */
 ZEND_END_MODULE_GLOBALS(rayaop)
+
+/* Global initializer */
+static void php_rayaop_init_globals(zend_rayaop_globals *globals);
 
 /* Globals access macro */
 #ifdef ZTS
