@@ -31,3 +31,4 @@
 /Makefile.fragments
 /Makefile.objects
 /cmake-build-debug
+/modules/rayaop.so
