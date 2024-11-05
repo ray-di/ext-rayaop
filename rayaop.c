@@ -334,20 +334,28 @@ PHP_MSHUTDOWN_FUNCTION(rayaop) {
     return SUCCESS;
 }
 
-/* Request initialization function fix */
 PHP_RINIT_FUNCTION(rayaop) {
+    if (!php_rayaop_original_execute_ex) {
+        php_rayaop_original_execute_ex = zend_execute_ex;
+    }
+
     RAYAOP_G_LOCK();
     if (!RAYAOP_G(intercept_ht)) {
         ALLOC_HASHTABLE(RAYAOP_G(intercept_ht));
         if (!RAYAOP_G(intercept_ht)) {
             RAYAOP_G_UNLOCK();
-            php_rayaop_handle_error(RAYAOP_E_MEMORY_ALLOCATION, "Failed to initialize intercept hash table");
+            php_rayaop_handle_error(RAYAOP_E_MEMORY_ALLOCATION, "Failed to allocate intercept hash table");
             return FAILURE;
         }
         zend_hash_init(RAYAOP_G(intercept_ht), 8, NULL, (dtor_func_t)php_rayaop_free_intercept_info, 0);
     }
     RAYAOP_G(is_intercepting) = 0;
     RAYAOP_G(execution_depth) = 0;
+
+    if (RAYAOP_G(method_intercept_enabled)) {
+        zend_execute_ex = rayaop_execute_ex;
+    }
+
     RAYAOP_G_UNLOCK();
     return SUCCESS;
 }
