@@ -49,7 +49,7 @@ ZEND_BEGIN_ARG_INFO(arginfo_method_intercept_init, 0)
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_method_intercept_enable, 0, 1, IS_VOID, 0)
-    ZEND_ARG_TYPE_INFO(0, enable, IS_BOOL, 0)
+    ZEND_ARG_TYPE_INFO(0, enable, _IS_BOOL, 0)
 ZEND_END_ARG_INFO()
 
 /* Debug mode configuration */
