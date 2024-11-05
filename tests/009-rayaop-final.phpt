@@ -24,7 +24,7 @@ class TestInterceptor implements Ray\Aop\MethodInterceptorInterface {
 
 method_intercept_init();
 // Verify initialization
-var_dump(method_intercept_enable());
+method_intercept_enable(true);
 
 method_intercept(FinalTestClass::class, 'finalMethod', new TestInterceptor());
 
@@ -44,3 +44,6 @@ method_intercept_enable(false);
 Before final method
 After final method
 Result: Final method: test
+Before final method
+After final method
+Null test: Final method:
