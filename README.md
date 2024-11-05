@@ -132,3 +132,9 @@ make test TESTS="-v tests/your_specific_test.phpt"
 Akihito Koriyama
 
 This extension was developed with the assistance of AI pair programming, which helped navigate the complexities of PHP extension development and PECL standards.
+
+## Acknowledgments
+
+This project was created using [JetBrains CLion](https://www.jetbrains.com/clion/), which is available for free with an [Open Source License](https://www.jetbrains.com/community/opensource/).
+
+We'd like to express our gratitude to JetBrains for providing such a powerful and user-friendly development environment.
