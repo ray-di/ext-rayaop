@@ -28,7 +28,7 @@ static zend_function_entry ray_aop_method_interceptor_interface_methods[] = {
 static const zend_function_entry rayaop_functions[] = {
     PHP_FE(method_intercept, arginfo_method_intercept)
     PHP_FE(method_intercept_init, arginfo_method_intercept_init)
-    PHP_FE(enable_method_intercept, arginfo_enable_method_intercept)
+    PHP_FE(method_intercept_enable, arginfo_method_intercept_enable)
     PHP_FE_END
 };
 
@@ -283,8 +283,8 @@ PHP_FUNCTION(method_intercept_init) {
     RETURN_TRUE;
 }
 
-/* Implementation of enable_method_intercept function */
-PHP_FUNCTION(enable_method_intercept) {
+/* Implementation of method_intercept_enable function */
+PHP_FUNCTION(method_intercept_enable) {
     zend_bool enable;
     ZEND_PARSE_PARAMETERS_START(1, 1)
         Z_PARAM_BOOL(enable)

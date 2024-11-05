@@ -36,7 +36,7 @@ $test = new TestClass();
 echo $test->testMethod(" method called") . "\n";
 
 // Disable method interception
-enable_method_intercept(false);
+method_intercept_enable(false);
 echo $test->testMethod(" method called without interception") . "\n";
 ?>
 --EXPECT--

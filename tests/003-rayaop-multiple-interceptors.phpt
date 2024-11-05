@@ -27,7 +27,7 @@ class Interceptor2 implements Ray\Aop\MethodInterceptorInterface {
 // Register multiple interceptors
 method_intercept(TestClass::class, 'testMethod', new Interceptor1());
 method_intercept(TestClass::class, 'testMethod', new Interceptor2());
-enable_method_intercept(true);
+method_intercept_enable(true);
 
 $test = new TestClass();
 $result = $test->testMethod("Hello");

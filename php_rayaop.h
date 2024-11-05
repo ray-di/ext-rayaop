@@ -2,6 +2,8 @@
 #ifndef PHP_RAYAOP_H
 #define PHP_RAYAOP_H
 
+// #define RAYAOP_DEBUG 1
+
 /* Configuration header */
 #ifdef HAVE_CONFIG_H
 #include "config.h"
@@ -46,7 +48,7 @@ ZEND_END_ARG_INFO()
 ZEND_BEGIN_ARG_INFO(arginfo_method_intercept_init, 0)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_enable_method_intercept, 0, 1, IS_VOID, 0)
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_method_intercept_enable, 0, 1, IS_VOID, 0)
     ZEND_ARG_TYPE_INFO(0, enable, _IS_BOOL, 0)
 ZEND_END_ARG_INFO()
 
@@ -119,7 +121,7 @@ PHP_MINFO_FUNCTION(rayaop);
 /* Extension functions */
 PHP_FUNCTION(method_intercept);
 PHP_FUNCTION(method_intercept_init);
-PHP_FUNCTION(enable_method_intercept);
+PHP_FUNCTION(method_intercept_enable);
 
 /* Utility functions */
 PHP_RAYAOP_API void php_rayaop_handle_error(int error_code, const char *message);
