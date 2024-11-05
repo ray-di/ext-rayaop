@@ -137,27 +137,30 @@ class ParamValidatorInterceptor implements Ray\Aop\MethodInterceptorInterface
 ```php
 bool method_intercept(string $class_name, string $method_name, object $interceptor)
 ```
-Registers an interceptor for a specific class method.
+Registers an interceptor for a specific class method. Only one interceptor can be active per method - registering a new one will replace any existing interceptor.
 - **Parameters:**
-    - `$class_name`: Target class name
-    - `$method_name`: Target method name
-    - `$interceptor`: Object implementing MethodInterceptorInterface
-- **Returns:** bool - True on success, False on failure
+    - `$class_name`: Fully qualified class name to intercept
+    - `$method_name`: Name of the method to intercept
+    - `$interceptor`: Object implementing Ray\Aop\MethodInterceptorInterface
+- **Returns:** bool - True on successful registration, False if registration fails
+- **Errors:** May generate E_WARNING on invalid handlers or memory allocation failures
 
 #### method_intercept_init()
 ```php
 bool method_intercept_init()
 ```
-Initializes or resets the interception system. Cleans up existing interceptors if any.
-- **Returns:** bool - True on success, False on failure
+Initializes or resets the interception system. Cleans up any existing interceptors and reinitializes the interceptor storage.
+- **Returns:** bool - True if initialization succeeds, False if memory allocation fails
+- **Errors:** May generate E_ERROR on memory allocation failures
 
 #### method_intercept_enable()
 ```php
 void method_intercept_enable(bool $enable)
 ```
-Enables or disables method interception globally.
+Enables or disables the method interception system globally. When disabled, intercepted methods will execute normally.
 - **Parameters:**
-    - `$enable`: True to enable interception, False to disable
+    - `$enable`: True to enable the interception system, False to disable it
+- **Note:** Disabling interception does not remove registered interceptors
 
 ### Basic Configuration Example
 ```php
