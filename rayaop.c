@@ -235,11 +235,6 @@ PHP_FUNCTION(method_intercept) {
         Z_PARAM_OBJECT(interceptor)
     ZEND_PARSE_PARAMETERS_END();
 
-    if (!RAYAOP_G(method_intercept_enabled)) {
-        php_error_docref(NULL, E_WARNING, "Method interception is currently disabled");
-        RETURN_FALSE;
-    }
-
     php_rayaop_intercept_info *info = php_rayaop_create_intercept_info();
     if (!info) {
         RETURN_FALSE;
