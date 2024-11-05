@@ -263,11 +263,10 @@ PHP_FUNCTION(method_intercept) {
     RAYAOP_G_LOCK();
     if (zend_hash_str_update_ptr(RAYAOP_G(intercept_ht), key, key_len, info) == NULL) {
         RAYAOP_G_UNLOCK();
-        zend_string_release(info->class_name);
-        zend_string_release(info->method_name);
-        zval_ptr_dtor(&info->handler);
-        efree(info);
         efree(key);
+        zval tmp_zv;
+        ZVAL_PTR(&tmp_zv, info);
+        php_rayaop_free_intercept_info(&tmp_zv);
         php_rayaop_handle_error(RAYAOP_E_HASH_UPDATE, "Failed to update intercept hash table");
         RETURN_FALSE;
     }
