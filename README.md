@@ -8,15 +8,18 @@ Low-level PHP extension that provides core method interception functionality for
 
 ## Features
 
-- Efficient low-level method interception
+- Method interception with comprehensive parameter access and return value modification
 - Support for intercepting final classes and methods
-- Full parameter and return value modification support
 - Works seamlessly with the `new` keyword
+- Thread-safe operation support in ZTS builds
+- Debug mode with configurable levels
+- Memory-efficient interception handling
 
 ## Requirements
 
 - PHP 8.1 or higher
 - Linux, macOS, or Windows with appropriate build tools
+- Thread-safe PHP build recommended for production use
 
 ## Installation
 
@@ -34,16 +37,38 @@ make
 make install
 ```
 
-3. Add the following line to your php.ini file:
+3. Add the following configuration to your php.ini file:
 ```ini
+; Required extension loading
 extension=rayaop.so  # For Unix/Linux
 extension=rayaop.dll # For Windows
+
+; Optional configuration
+[rayaop]
+rayaop.debug_level = 0       ; 0=disabled, 1=basic, 2=verbose
 ```
 
 4. Verify installation:
 ```bash
 php -m | grep rayaop
 ```
+
+## Security Considerations
+
+### Thread Safety
+The extension is designed to be thread-safe and includes proper locking mechanisms for global state. When using in a threaded environment (e.g., with PHP-FPM), ensure you're using the Thread-Safe (ZTS) version of PHP.
+
+### Memory Management
+- The extension implements careful memory management with proper allocation and deallocation
+- Includes protection against memory leaks in interceptor chains
+- Implements safeguards against infinite recursion
+- Uses secure hash table operations for interceptor storage
+
+### Best Practices
+1. Always validate interceptor objects before registration
+2. Implement proper error handling in interceptors
+3. Avoid storing sensitive data in interceptor instances
+4. Set appropriate memory and recursion limits in production
 
 ## Design Decisions
 
@@ -52,6 +77,8 @@ This extension provides minimal, high-performance method interception capabiliti
 - One interceptor per method: The extension supports a single active interceptor per method, with the last registered interceptor taking precedence
 - Final class support: Can intercept final classes and methods, unlike pure PHP implementations
 - Raw interception: No built-in matching or conditions (use Ray.Aop for these features)
+- Thread-safe design: All global state is properly protected
+- Zero-copy parameter passing where possible
 
 ## Relationship with Ray.Aop
 
@@ -66,40 +93,129 @@ Ray.Aop provides:
 When both are used together:
 - Ray.Aop handles the high-level AOP logic
 - This extension provides the low-level interception mechanism
-- Ray.Aop automatically utilizes this extension when available for better performance
 
-## Basic Usage
+## Advanced Usage
 
-### Simple Interceptor
+### Error Handling
 ```php
-class LoggingInterceptor implements Ray\Aop\MethodInterceptorInterface
+class ErrorHandlingInterceptor implements Ray\Aop\MethodInterceptorInterface
 {
     public function intercept(object $object, string $method, array $params): mixed
     {
-        echo "Before {$method}\n";
-        $result = $object->$method(...$params);
-        echo "After {$method}\n";
-        return $result;
+        try {
+            return $object->$method(...$params);
+        } catch (Throwable $e) {
+            // Handle or transform the error
+            throw new CustomException("Error in {$method}: " . $e->getMessage());
+        }
     }
 }
-
-// Register the interceptor
-method_intercept(TestClass::class, 'testMethod', new LoggingInterceptor());
 ```
 
-### Intercepting Final Methods
+### Parameter Modification
 ```php
-final class FinalClass
+class ParamValidatorInterceptor implements Ray\Aop\MethodInterceptorInterface
 {
-    final public function finalMethod($value)
+    public function intercept(object $object, string $method, array $params): mixed
     {
-        return "Final: {$value}";
+        // Validate and potentially modify parameters
+        $sanitizedParams = array_map(
+            fn($param) => is_string($param) ? htmlspecialchars($param) : $param,
+            $params
+        );
+        
+        return $object->$method(...$sanitizedParams);
     }
 }
+```
 
-method_intercept(FinalClass::class, 'finalMethod', new LoggingInterceptor());
-$instance = new FinalClass();
-echo $instance->finalMethod('test'); // Interceptor will be invoked
+## API Reference
+
+### Core Functions
+
+#### method_intercept()
+```php
+bool method_intercept(string $class_name, string $method_name, object $interceptor)
+```
+Registers an interceptor for a specific class method.
+- **Parameters:**
+    - `$class_name`: Target class name
+    - `$method_name`: Target method name
+    - `$interceptor`: Object implementing MethodInterceptorInterface
+- **Returns:** bool - True on success, False on failure
+
+#### method_intercept_init()
+```php
+bool method_intercept_init()
+```
+Initializes or resets the interception system. Cleans up existing interceptors if any.
+- **Returns:** bool - True on success, False on failure
+
+#### method_intercept_enable()
+```php
+void method_intercept_enable(bool $enable)
+```
+Enables or disables method interception globally.
+- **Parameters:**
+    - `$enable`: True to enable interception, False to disable
+
+### Basic Configuration Example
+```php
+// Initialize the interception system
+method_intercept_init();
+
+// Enable method interception
+method_intercept_enable(true);
+
+// Register an interceptor
+$result = method_intercept(
+    MyClass::class,
+    'targetMethod',
+    new MyInterceptor()
+);
+
+if (!$result) {
+    // Handle registration failure
+}
+```
+
+## Performance Considerations
+
+### Memory Usage
+- Each interceptor registration uses approximately 200 bytes of memory
+- The extension maintains a hash table for quick interceptor lookups
+- Memory usage scales linearly with the number of intercepted methods
+
+### Performance Considerations
+- Method interception adds some overhead to each method call
+- The extension implements efficient parameter handling
+- Interceptor lookup is optimized using hash tables
+- Execution depth is tracked to prevent infinite recursion
+
+
+## Troubleshooting
+
+### Common Issues
+
+1. Segmentation Faults
+    - Ensure Thread-Safe PHP in multi-threaded environments
+    - Check memory limits and recursion depth
+    - Verify interceptor object validity
+
+2. Memory Leaks
+    - Implement proper cleanup in interceptors
+    - Use method_intercept_init() when necessary
+    - Monitor memory usage with debug_level = 1
+
+3. Performance Issues
+    - Review interceptor complexity
+    - Check recursion depth settings
+    - Monitor interception patterns
+
+### Debug Mode
+Enable debug mode for detailed logging:
+```ini
+rayaop.debug_level = 2
 ```
 
 ## Development
@@ -123,22 +239,35 @@ For specific tests:
 make test TESTS="-v tests/your_specific_test.phpt"
 ```
 
+### Debug Builds
+```bash
+./configure --enable-debug
+make clean
+make
+```
+
 ## Contributing
 
 1. Fork the repository
 2. Create your feature branch (`git checkout -b feature/amazing-feature`)
 3. Add appropriate tests for your changes
 4. Ensure all tests pass (`make test`)
-5. Commit your changes
-6. Push to the branch
-7. Create a Pull Request
+5. Run memory leak checks (`make test TESTS="-m")
+6. Commit your changes
+7. Push to the branch
+8. Create a Pull Request
 
 ## Support and Feedback
 
 - Issues: Report bugs via GitHub Issues
 - Questions: Use GitHub Discussions
 - Security: Report security issues directly to maintainers
+- Performance: Share benchmarks and optimization suggestions
 
 ## License
 
 [MIT License](LICENSE)
+
+## Credits
+
+- Akihito Koriyama 
