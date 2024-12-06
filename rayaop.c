@@ -131,12 +131,12 @@ PHP_RAYAOP_API php_rayaop_intercept_info *php_rayaop_find_intercept_info(const c
 
 /* Parameter preparation and cleanup */
 static bool prepare_intercept_params(zend_execute_data *execute_data, zval *params, php_rayaop_intercept_info *info) {
-    if (!execute_data->This.value.obj) {
+    if (!Z_OBJ(execute_data->This)) {
         php_rayaop_handle_error(RAYAOP_E_INVALID_HANDLER, "Object instance is NULL");
         return false;
     }
 
-    ZVAL_OBJ(&params[0], execute_data->This.value.obj);
+    ZVAL_OBJ(&params[0], Z_OBJ(execute_data->This));
     ZVAL_STR_COPY(&params[1], info->method_name);
 
     array_init(&params[2]);
@@ -205,7 +205,6 @@ static void rayaop_execute_ex(zend_execute_data *execute_data) {
             zval retval;
             zval params[3];
 
-            prepare_intercept_params(execute_data, params, info);
             if (!prepare_intercept_params(execute_data, params, info)) {
                 cleanup_intercept_params(params);
                 RAYAOP_G(is_intercepting) = 0;
