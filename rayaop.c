@@ -36,8 +36,6 @@ static const zend_function_entry rayaop_functions[] = {
     PHP_FE_END
 };
 
-
-
 /* Module globals initializer */
 static void php_rayaop_init_globals(zend_rayaop_globals *globals) {
     globals->intercept_ht = NULL;
@@ -115,7 +113,9 @@ PHP_RAYAOP_API bool php_rayaop_should_intercept(zend_execute_data *execute_data)
 PHP_RAYAOP_API char *php_rayaop_generate_key(zend_string *class_name, zend_string *method_name, size_t *key_len) {
     char *key = NULL;
     *key_len = spprintf(&key, 0, "%s::%s", ZSTR_VAL(class_name), ZSTR_VAL(method_name));
+#ifdef RAYAOP_DEBUG
     PHP_RAYAOP_DEBUG_PRINT("Generated key: %s", key);
+#endif
     return key;
 }
 
@@ -129,7 +129,6 @@ PHP_RAYAOP_API php_rayaop_intercept_info *php_rayaop_find_intercept_info(const c
     return info;
 }
 
-/* Parameter preparation and cleanup */
 static bool prepare_intercept_params(zend_execute_data *execute_data, zval *params, php_rayaop_intercept_info *info) {
     if (!Z_OBJ(execute_data->This)) {
         php_rayaop_handle_error(RAYAOP_E_INVALID_HANDLER, "Object instance is NULL");
@@ -186,7 +185,9 @@ static void rayaop_execute_ex(zend_execute_data *execute_data) {
     }
 
     RAYAOP_G(execution_depth)++;
+#ifdef RAYAOP_DEBUG
     PHP_RAYAOP_DEBUG_PRINT("Execution depth: %d", RAYAOP_G(execution_depth));
+#endif
 
     zend_function *func = execute_data->func;
     size_t key_len;
@@ -194,7 +195,9 @@ static void rayaop_execute_ex(zend_execute_data *execute_data) {
 
     php_rayaop_intercept_info *info = php_rayaop_find_intercept_info(key, key_len);
     if (info && info->is_enabled) {
+#ifdef RAYAOP_DEBUG
         PHP_RAYAOP_DEBUG_PRINT("Executing intercept for %s", key);
+#endif
 
         if (Z_TYPE(info->handler) != IS_OBJECT) {
             php_rayaop_handle_error(RAYAOP_E_INVALID_HANDLER, "Invalid interceptor type");
@@ -217,8 +220,8 @@ static void rayaop_execute_ex(zend_execute_data *execute_data) {
                 RAYAOP_G(execution_depth)--;
                 return;
             }
-            RAYAOP_G(is_intercepting) = 1;
 
+            RAYAOP_G(is_intercepting) = 1;
             ZVAL_UNDEF(&retval);
             if (execute_intercept_handler(&info->handler, params, &retval)) {
                 if (!Z_ISUNDEF(retval) && execute_data->return_value) {
@@ -239,6 +242,7 @@ static void rayaop_execute_ex(zend_execute_data *execute_data) {
     efree(key);
     RAYAOP_G(execution_depth)--;
 }
+
 /* Implementation of method_intercept function */
 PHP_FUNCTION(method_intercept) {
     char *class_name, *method_name;
@@ -309,10 +313,14 @@ PHP_FUNCTION(method_intercept_enable) {
     RAYAOP_G(method_intercept_enabled) = enable;
     if (enable) {
         zend_execute_ex = rayaop_execute_ex;
+#ifdef RAYAOP_DEBUG
         PHP_RAYAOP_DEBUG_PRINT("Method intercept enabled");
+#endif
     } else {
         zend_execute_ex = php_rayaop_original_execute_ex;
+#ifdef RAYAOP_DEBUG
         PHP_RAYAOP_DEBUG_PRINT("Method intercept disabled");
+#endif
     }
     RAYAOP_G_UNLOCK();
 }
@@ -441,7 +449,7 @@ void php_rayaop_debug_print_zval(zval *value) {
             php_printf("float(%g)\n", Z_DVAL_P(value));
             break;
         case IS_STRING:
-            php_printf("string(%d) \"%s\"\n", Z_STRLEN_P(value), Z_STRVAL_P(value));
+            php_printf("string(%d) \"%s\"\n", (int)Z_STRLEN_P(value), Z_STRVAL_P(value));
             break;
         case IS_ARRAY:
             php_printf("array(%d) {...}\n", zend_hash_num_elements(Z_ARRVAL_P(value)));
