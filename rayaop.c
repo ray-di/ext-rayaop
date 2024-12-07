@@ -147,17 +147,7 @@ PHP_RAYAOP_API zend_bool php_rayaop_should_intercept(zend_execute_data *execute_
 }
 
 static void rayaop_execute_ex(zend_execute_data *execute_data) {
-    if (EG(exception)) {
-        /* If exception is already set, just run original execute_ex */
-        if (php_rayaop_original_execute_ex) {
-            php_rayaop_original_execute_ex(execute_data);
-        } else {
-            zend_execute_ex(execute_data);
-        }
-        return;
-    }
-
-    if (!php_rayaop_should_intercept(execute_data)) {
+    if (EG(exception) || !php_rayaop_should_intercept(execute_data)) {
         if (php_rayaop_original_execute_ex) {
             php_rayaop_original_execute_ex(execute_data);
         } else {
@@ -169,12 +159,9 @@ static void rayaop_execute_ex(zend_execute_data *execute_data) {
     RAYAOP_G(execution_depth)++;
 
     zend_function *func = execute_data->func;
-    if (EG(exception)) {
-        goto fallback;
-    }
-
     size_t key_len = 0;
     char *key = php_rayaop_generate_key(func->common.scope->name, func->common.function_name, &key_len);
+
     if (!key) {
         goto fallback;
     }
@@ -185,12 +172,7 @@ static void rayaop_execute_ex(zend_execute_data *execute_data) {
         goto fallback;
     }
 
-    if (Z_TYPE(info->handler) != IS_OBJECT) {
-        efree(key);
-        goto fallback;
-    }
-
-    if (EG(exception)) {
+    if (Z_TYPE(execute_data->This) != IS_OBJECT) {
         efree(key);
         goto fallback;
     }
@@ -199,72 +181,56 @@ static void rayaop_execute_ex(zend_execute_data *execute_data) {
     zval params[3];
     ZVAL_UNDEF(&retval);
 
-    if (Z_TYPE(execute_data->This) != IS_OBJECT) {
-        efree(key);
-        goto fallback;
-    }
-
+    // Set up parameters for the interceptor
     ZVAL_OBJ(&params[0], Z_OBJ(execute_data->This));
     Z_ADDREF_P(&params[0]);
-
     ZVAL_STR(&params[1], zend_string_copy(info->method_name));
-    array_init(&params[2]);
 
+    // Create arguments array
+    array_init(&params[2]);
     uint32_t arg_count = ZEND_CALL_NUM_ARGS(execute_data);
-    if (arg_count > 0 && !EG(exception)) {
+    if (arg_count > 0) {
         zval *args = ZEND_CALL_ARG(execute_data, 1);
-        if (args && !EG(exception)) {
-            for (uint32_t i = 0; i < arg_count; i++) {
-                zval *arg = &args[i];
-                if (!Z_ISUNDEF_P(arg)) {
-                    Z_TRY_ADDREF_P(arg);
-                    add_next_index_zval(&params[2], arg);
-                }
+        for (uint32_t i = 0; i < arg_count; i++) {
+            zval *arg = &args[i];
+            if (!Z_ISUNDEF_P(arg)) {
+                Z_TRY_ADDREF_P(arg);
+                add_next_index_zval(&params[2], arg);
             }
         }
     }
 
-    if (EG(exception)) {
-        /* Exception occurred during arg processing */
-        goto cleanup;
-    }
-
+    // Call the interceptor
     zval method_name;
     ZVAL_STRING(&method_name, "intercept");
-
     RAYAOP_G(is_intercepting) = 1;
-    if (call_user_function(NULL, &info->handler, &method_name, &retval, 3, params) == SUCCESS && !EG(exception)) {
-        if (!Z_ISUNDEF(retval) && execute_data->return_value && !Z_ISUNDEF_P(execute_data->return_value)) {
+
+    if (call_user_function(NULL, &info->handler, &method_name, &retval, 3, params) == SUCCESS) {
+        if (!Z_ISUNDEF(retval) && execute_data->return_value) {
             ZVAL_COPY(execute_data->return_value, &retval);
         }
     }
 
-cleanup:
-    zval_ptr_dtor(&retval);
+    // Cleanup
+    RAYAOP_G(is_intercepting) = 0;
     zval_ptr_dtor(&method_name);
+    zval_ptr_dtor(&params[0]);
     zval_ptr_dtor(&params[1]);
     zval_ptr_dtor(&params[2]);
-    zval_ptr_dtor(&params[0]);
-    RAYAOP_G(is_intercepting) = 0;
+    if (!Z_ISUNDEF(retval)) {
+        zval_ptr_dtor(&retval);
+    }
+
     efree(key);
+    RAYAOP_G(execution_depth)--;
+    return;
 
 fallback:
     RAYAOP_G(execution_depth)--;
-
-    if (EG(exception)) {
-        /* If there's an exception now, just fallback to original or zend_execute_ex */
-        if (php_rayaop_original_execute_ex) {
-            php_rayaop_original_execute_ex(execute_data);
-        } else {
-            zend_execute_ex(execute_data);
-        }
+    if (php_rayaop_original_execute_ex) {
+        php_rayaop_original_execute_ex(execute_data);
     } else {
-        /* If no exception and no interception, call original */
-        if (php_rayaop_original_execute_ex) {
-            php_rayaop_original_execute_ex(execute_data);
-        } else {
-            zend_execute_ex(execute_data);
-        }
+        zend_execute_ex(execute_data);
     }
 }
 
