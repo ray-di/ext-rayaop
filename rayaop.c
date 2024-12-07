@@ -147,85 +147,130 @@ PHP_RAYAOP_API zend_bool php_rayaop_should_intercept(zend_execute_data *execute_
 }
 
 static void rayaop_execute_ex(zend_execute_data *execute_data) {
-    if (EG(exception) || !php_rayaop_should_intercept(execute_data)) {
+    if (!execute_data || !execute_data->func) {
         if (php_rayaop_original_execute_ex) {
             php_rayaop_original_execute_ex(execute_data);
-        } else {
-            zend_execute_ex(execute_data);
+        }
+        return;
+    }
+
+    // 既に例外が発生している場合は元のハンドラにパス
+    if (EG(exception)) {
+        if (php_rayaop_original_execute_ex) {
+            php_rayaop_original_execute_ex(execute_data);
+        }
+        return;
+    }
+
+    // インターセプトすべきでない場合は早期リターン
+    if (!php_rayaop_should_intercept(execute_data)) {
+        if (php_rayaop_original_execute_ex) {
+            php_rayaop_original_execute_ex(execute_data);
         }
         return;
     }
 
     RAYAOP_G(execution_depth)++;
 
-    zend_function *func = execute_data->func;
-    size_t key_len = 0;
-    char *key = php_rayaop_generate_key(func->common.scope->name, func->common.function_name, &key_len);
-
-    if (!key) {
-        goto fallback;
-    }
-
-    php_rayaop_intercept_info *info = php_rayaop_find_intercept_info(key, key_len);
-    if (!info || !info->is_enabled) {
-        efree(key);
-        goto fallback;
-    }
-
-    if (Z_TYPE(execute_data->This) != IS_OBJECT) {
-        efree(key);
-        goto fallback;
-    }
-
+    zend_bool cleanup_needed = 0;
+    char *key = NULL;
     zval retval;
     zval params[3];
+    zval method_name;
+
     ZVAL_UNDEF(&retval);
+    ZVAL_UNDEF(&method_name);
+    ZVAL_UNDEF(&params[0]);
+    ZVAL_UNDEF(&params[1]);
+    ZVAL_UNDEF(&params[2]);
 
-    // Set up parameters for the interceptor
-    ZVAL_OBJ(&params[0], Z_OBJ(execute_data->This));
-    Z_ADDREF_P(&params[0]);
-    ZVAL_STR(&params[1], zend_string_copy(info->method_name));
+    // Try-Catch equivalent using zend macros
+    zend_try {
+        zend_function *func = execute_data->func;
+        size_t key_len = 0;
 
-    // Create arguments array
-    array_init(&params[2]);
-    uint32_t arg_count = ZEND_CALL_NUM_ARGS(execute_data);
-    if (arg_count > 0) {
-        zval *args = ZEND_CALL_ARG(execute_data, 1);
-        for (uint32_t i = 0; i < arg_count; i++) {
-            zval *arg = &args[i];
-            if (!Z_ISUNDEF_P(arg)) {
-                Z_TRY_ADDREF_P(arg);
-                add_next_index_zval(&params[2], arg);
+        key = php_rayaop_generate_key(func->common.scope->name, func->common.function_name, &key_len);
+        if (!key) {
+            goto fallback;
+        }
+
+        php_rayaop_intercept_info *info = php_rayaop_find_intercept_info(key, key_len);
+        if (!info || !info->is_enabled) {
+            goto cleanup;
+        }
+
+        if (Z_TYPE(execute_data->This) != IS_OBJECT) {
+            goto cleanup;
+        }
+
+        cleanup_needed = 1;
+        ZVAL_OBJ(&params[0], Z_OBJ(execute_data->This));
+        Z_ADDREF_P(&params[0]);
+        ZVAL_STR(&params[1], zend_string_copy(info->method_name));
+        array_init(&params[2]);
+
+        // Copy arguments
+        uint32_t arg_count = ZEND_CALL_NUM_ARGS(execute_data);
+        if (arg_count > 0) {
+            zval *args = ZEND_CALL_ARG(execute_data, 1);
+            for (uint32_t i = 0; i < arg_count; i++) {
+                zval *arg = &args[i];
+                if (!Z_ISUNDEF_P(arg)) {
+                    Z_TRY_ADDREF_P(arg);
+                    add_next_index_zval(&params[2], arg);
+                }
             }
         }
-    }
 
-    // Call the interceptor
-    zval method_name;
-    ZVAL_STRING(&method_name, "intercept");
-    RAYAOP_G(is_intercepting) = 1;
+        ZVAL_STRING(&method_name, "intercept");
+        RAYAOP_G(is_intercepting) = 1;
 
-    if (call_user_function(NULL, &info->handler, &method_name, &retval, 3, params) == SUCCESS) {
-        if (!Z_ISUNDEF(retval) && execute_data->return_value) {
-            ZVAL_COPY(execute_data->return_value, &retval);
+        if (call_user_function(NULL, &info->handler, &method_name, &retval, 3, params) == SUCCESS) {
+            if (!Z_ISUNDEF(retval) && execute_data->return_value) {
+                ZVAL_COPY(execute_data->return_value, &retval);
+            }
+        }
+
+    } zend_catch {
+        if (cleanup_needed) {
+            // Cleanup in case of exception
+            zval_ptr_dtor(&method_name);
+            zval_ptr_dtor(&params[0]);
+            zval_ptr_dtor(&params[1]);
+            zval_ptr_dtor(&params[2]);
+            if (!Z_ISUNDEF(retval)) {
+                zval_ptr_dtor(&retval);
+            }
+        }
+        if (key) {
+            efree(key);
+        }
+        RAYAOP_G(is_intercepting) = 0;
+        RAYAOP_G(execution_depth)--;
+        zend_bailout();
+    } zend_end_try();
+
+cleanup:
+    if (cleanup_needed) {
+        zval_ptr_dtor(&method_name);
+        zval_ptr_dtor(&params[0]);
+        zval_ptr_dtor(&params[1]);
+        zval_ptr_dtor(&params[2]);
+        if (!Z_ISUNDEF(retval)) {
+            zval_ptr_dtor(&retval);
         }
     }
-
-    // Cleanup
-    RAYAOP_G(is_intercepting) = 0;
-    zval_ptr_dtor(&method_name);
-    zval_ptr_dtor(&params[0]);
-    zval_ptr_dtor(&params[1]);
-    zval_ptr_dtor(&params[2]);
-    if (!Z_ISUNDEF(retval)) {
-        zval_ptr_dtor(&retval);
+    if (key) {
+        efree(key);
     }
-
-    efree(key);
+    RAYAOP_G(is_intercepting) = 0;
     RAYAOP_G(execution_depth)--;
     return;
 
 fallback:
+    if (key) {
+        efree(key);
+    }
     RAYAOP_G(execution_depth)--;
     if (php_rayaop_original_execute_ex) {
         php_rayaop_original_execute_ex(execute_data);
