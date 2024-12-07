@@ -9,7 +9,7 @@ ZEND_DECLARE_MODULE_GLOBALS(rayaop)
 
 /* Global variable declarations */
 zend_class_entry *ray_aop_method_interceptor_interface_ce = NULL;
-static void (*php_rayaop_original_execute_ex)(zend_execute_data *execute_data) = NULL;
+static void (*original_zend_execute_ex)(zend_execute_data *execute_data) = NULL;
 
 /* Argument information for the interceptor method */
 ZEND_BEGIN_ARG_INFO_EX(arginfo_method_intercept, 0, 0, 3)
@@ -121,7 +121,7 @@ PHP_RAYAOP_API php_rayaop_intercept_info *php_rayaop_find_intercept_info(const c
     return info;
 }
 
-PHP_RAYAOP_API zend_bool php_rayaop_should_intercept(zend_execute_data *execute_data) {
+static zend_bool rayaop_should_intercept(zend_execute_data *execute_data) {
     if (!RAYAOP_G(method_intercept_enabled)) {
         return 0;
     }
@@ -130,42 +130,47 @@ PHP_RAYAOP_API zend_bool php_rayaop_should_intercept(zend_execute_data *execute_
         return 0;
     }
 
-    /* If there's already an exception, do not intercept */
-    if (EG(exception)) {
-        return 0;
-    }
-
     if (!execute_data || !execute_data->func || !execute_data->func->common.scope || !execute_data->func->common.function_name) {
         return 0;
     }
 
+    // インターセプション中は再帰的なインターセプションを避ける
     if (RAYAOP_G(is_intercepting)) {
         return 0;
     }
+
+    // include/eval 中のインターセプションを制御
+    if (execute_data->func->type == ZEND_EVAL ||
+        execute_data->func->type == ZEND_INCLUDE ||
+        execute_data->func->type == ZEND_INCLUDE_ONCE ||
+        execute_data->func->type == ZEND_REQUIRE ||
+        execute_data->func->type == ZEND_REQUIRE_ONCE) {
+        return 0;
+        }
 
     return 1;
 }
 
 static void rayaop_execute_ex(zend_execute_data *execute_data) {
     if (!execute_data || !execute_data->func) {
-        if (php_rayaop_original_execute_ex) {
-            php_rayaop_original_execute_ex(execute_data);
+        if (original_zend_execute_ex) {
+            original_zend_execute_ex(execute_data);
         }
         return;
     }
 
     // 既に例外が発生している場合は元のハンドラにパス
     if (EG(exception)) {
-        if (php_rayaop_original_execute_ex) {
-            php_rayaop_original_execute_ex(execute_data);
+        if (original_zend_execute_ex) {
+            original_zend_execute_ex(execute_data);
         }
         return;
     }
 
     // インターセプトすべきでない場合は早期リターン
-    if (!php_rayaop_should_intercept(execute_data)) {
-        if (php_rayaop_original_execute_ex) {
-            php_rayaop_original_execute_ex(execute_data);
+    if (!rayaop_should_intercept(execute_data)) {
+        if (original_zend_execute_ex) {
+            original_zend_execute_ex(execute_data);
         }
         return;
     }
@@ -272,8 +277,8 @@ fallback:
         efree(key);
     }
     RAYAOP_G(execution_depth)--;
-    if (php_rayaop_original_execute_ex) {
-        php_rayaop_original_execute_ex(execute_data);
+    if (original_zend_execute_ex) {
+        original_zend_execute_ex(execute_data);
     } else {
         zend_execute_ex(execute_data);
     }
@@ -353,7 +358,7 @@ PHP_FUNCTION(method_intercept_enable) {
     if (enable) {
         zend_execute_ex = rayaop_execute_ex;
     } else {
-        zend_execute_ex = php_rayaop_original_execute_ex;
+        zend_execute_ex = original_zend_execute_ex;
     }
     RAYAOP_G_UNLOCK();
 }
@@ -374,7 +379,7 @@ PHP_MINIT_FUNCTION(rayaop) {
 
     RAYAOP_G(method_intercept_enabled) = 1;
     RAYAOP_G(debug_level) = 0;
-    php_rayaop_original_execute_ex = zend_execute_ex;
+    original_zend_execute_ex = zend_execute_ex;
     zend_execute_ex = rayaop_execute_ex;
 
     return SUCCESS;
@@ -388,15 +393,15 @@ PHP_MSHUTDOWN_FUNCTION(rayaop) {
     }
 #endif
 
-    if (php_rayaop_original_execute_ex) {
-        zend_execute_ex = php_rayaop_original_execute_ex;
+    if (original_zend_execute_ex) {
+        zend_execute_ex = original_zend_execute_ex;
     }
     return SUCCESS;
 }
 
 PHP_RINIT_FUNCTION(rayaop) {
-    if (!php_rayaop_original_execute_ex) {
-        php_rayaop_original_execute_ex = zend_execute_ex;
+    if (!original_zend_execute_ex) {
+        original_zend_execute_ex = zend_execute_ex;
     }
 
     RAYAOP_G_LOCK();
