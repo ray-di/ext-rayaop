@@ -53,7 +53,7 @@ extern MUTEX_T rayaop_mutex;
 typedef struct _php_rayaop_intercept_info {
     zend_string *class_name;     /* Class name */
     zend_string *method_name;    /* Method name */
-    zval handler;                /* Intercept handler object */
+    zval handler;                /* Intercept handler object (only one) */
     zend_bool is_enabled;        /* Enabled flag */
 } php_rayaop_intercept_info;
 
@@ -90,6 +90,7 @@ PHP_FUNCTION(method_intercept_enable);
 
 /* API functions */
 PHP_RAYAOP_API void php_rayaop_handle_error(int error_code, const char *message);
+PHP_RAYAOP_API zend_bool php_rayaop_should_intercept(zend_execute_data *execute_data);
 PHP_RAYAOP_API char *php_rayaop_generate_key(zend_string *class_name, zend_string *method_name, size_t *key_len);
 PHP_RAYAOP_API php_rayaop_intercept_info *php_rayaop_find_intercept_info(const char *key, size_t key_len);
 PHP_RAYAOP_API void php_rayaop_free_intercept_info(zval *zv);
