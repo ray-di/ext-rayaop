@@ -9,7 +9,7 @@ clean() {
 prepare() {
     echo "Preparing..."
     phpize
-    ./configure
+    ./configure CFLAGS="-g -O0"
 }
 
 build() {
