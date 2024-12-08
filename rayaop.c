@@ -234,7 +234,8 @@ static void rayaop_execute_ex(zend_execute_data *execute_data) {
     ZVAL_STRING(&method_name, "intercept");
 
     RAYAOP_G(is_intercepting) = 1;
-    if (call_user_function(NULL, &info->handler, &method_name, &retval, 3, params) == SUCCESS && !EG(exception)) {
+    int call_result = call_user_function(NULL, &info->handler, &method_name, &retval, 3, params);
+    if (call_result == SUCCESS && !EG(exception)) {
         if (execute_data->return_value) {
             if (!Z_ISUNDEF(retval)) {
                 ZVAL_COPY(execute_data->return_value, &retval);  // Propagate explicit return values
@@ -242,6 +243,8 @@ static void rayaop_execute_ex(zend_execute_data *execute_data) {
                 ZVAL_NULL(execute_data->return_value);  // Handle void or empty returns
             }
         }
+    } else if (call_result != SUCCESS) {
+        php_rayaop_handle_error(RAYAOP_E_INVALID_HANDLER, "Interceptor call failed");
     }
 
 cleanup:
