@@ -7,7 +7,7 @@ class MethodInterceptor implements Ray\Aop\MethodInterceptorInterface
         echo "Intercepted: " . get_class($object) . "::{$method}\n";
         echo "Arguments: " . json_encode($params) . "\n";
 
-        // 元のメソッドを呼び出し、結果を返す
+        // Call the original method and return the result
         return call_user_func_array([$object, $method], $params);
     }
 }
@@ -40,11 +40,14 @@ $test = new TestClass();
 
 echo "Calling testMethod (should be intercepted)\n";
 $result1 = $test->testMethod("test");
-echo "Result: $result1\n";
 
 echo "\nCalling nonInterceptedMethod (should not be intercepted)\n";
 $result2 = $test->nonInterceptedMethod("test");
-echo "Result: $result2\n";
+var_dump($result2);
 
 echo "\nScript execution completed\n";
 
+$success =  $result1 === 'Result: test' && $result2 === 'Non-intercepted result: test';
+echo $success ? 'Test Success.' : 'Test Failure.';
+echo PHP_EOL;
+exit($success ? 0 : 1);
