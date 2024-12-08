@@ -40,10 +40,11 @@ $test = new TestClass();
 
 echo "Calling testMethod (should be intercepted)\n";
 $result1 = $test->testMethod("test");
+echo "$result1\n";
 
 echo "\nCalling nonInterceptedMethod (should not be intercepted)\n";
 $result2 = $test->nonInterceptedMethod("test");
-var_dump($result2);
+echo "$result2\n";
 
 echo "\nScript execution completed\n";
 
