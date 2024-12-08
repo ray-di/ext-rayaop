@@ -235,8 +235,12 @@ static void rayaop_execute_ex(zend_execute_data *execute_data) {
 
     RAYAOP_G(is_intercepting) = 1;
     if (call_user_function(NULL, &info->handler, &method_name, &retval, 3, params) == SUCCESS && !EG(exception)) {
-        if (!Z_ISUNDEF(retval) && execute_data->return_value && !Z_ISUNDEF_P(execute_data->return_value)) {
-            ZVAL_COPY(execute_data->return_value, &retval);
+        if (execute_data->return_value) {
+            if (!Z_ISUNDEF(retval)) {
+                ZVAL_COPY(execute_data->return_value, &retval);  // Propagate explicit return values
+            } else {
+                ZVAL_NULL(execute_data->return_value);  // Handle void or empty returns
+            }
         }
     }
 
