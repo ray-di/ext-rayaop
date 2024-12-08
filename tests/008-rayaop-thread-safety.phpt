@@ -42,6 +42,8 @@ for ($i = 0; $i < 3; $i++) {
 $test = new TestClass();
 $paramsArray = [null, 'test', 'error', 'another test'];
 
+method_intercept_enable(true);
+
 foreach ($paramsArray as $i => $param) {
     $paramString = isset($param) ? $param : '';
     echo "<Execution #{$i} with param: {$paramString}>" . PHP_EOL;
