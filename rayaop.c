@@ -370,6 +370,8 @@ PHP_MINIT_FUNCTION(rayaop) {
 #ifdef ZTS
     ts_allocate_id(&rayaop_globals_id, sizeof(zend_rayaop_globals), NULL, NULL);
     rayaop_mutex = tsrm_mutex_alloc();
+    ts_free_id(rayaop_globals_id);
+
     if (!rayaop_mutex) {
         php_error_docref(NULL, E_ERROR, "Failed to allocate mutex for RayAOP");
         return FAILURE;
