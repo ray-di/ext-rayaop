@@ -220,9 +220,12 @@ static void rayaop_execute_ex(zend_execute_data *execute_data) {
         if (args && !EG(exception)) {
             for (uint32_t i = 0; i < arg_count; i++) {
                 zval *arg = &args[i];
-                if (!Z_ISUNDEF_P(arg)) {
+                if (!Z_ISUNDEF_P(arg) && !EG(exception)) {
                     Z_TRY_ADDREF_P(arg);
-                    add_next_index_zval(&params[2], arg);
+                    if (add_next_index_zval(&params[2], arg) == FAILURE) {
+                        Z_TRY_DELREF_P(arg);
+                        break;
+                    }
                 }
             }
         }
