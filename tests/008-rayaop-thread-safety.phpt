@@ -31,20 +31,23 @@ class TestClass {
 method_intercept_init();
 
 for ($i = 0; $i < 3; $i++) {
-    $result = method_intercept(
+    $res = method_intercept(
         TestClass::class,
         'method',
         new SafetyTestInterceptor($i)
     );
-    echo "<Interceptor {$i} registered: " . ($result ? 'true' : 'false') . ">" . PHP_EOL;
+    echo "<Interceptor {$i} registered: " . ($res ? 'true' : 'false') . ">" . PHP_EOL;
 }
 
 $test = new TestClass();
 $paramsArray = [null, 'test', 'error', 'another test'];
 
+method_intercept_enable(true);
+
 foreach ($paramsArray as $i => $param) {
     $paramString = isset($param) ? $param : '';
     echo "<Execution #{$i} with param: {$paramString}>" . PHP_EOL;
+
     try {
         $result = $test->method($param);
         echo "<Result: " . ($result ? 'true' : 'false') . ">" . PHP_EOL;
@@ -54,7 +57,6 @@ foreach ($paramsArray as $i => $param) {
 }
 
 echo "<END TEST>" . PHP_EOL;
-?>
 --EXPECT--
 <TEST>
 <Interceptor 0 registered: true>

@@ -32,6 +32,8 @@ var_dump(method_intercept_init());
 // Register the interceptor
 var_dump(method_intercept('TestClass', 'testMethod', new TestInterceptor()));
 
+method_intercept_enable(true);
+
 $test = new TestClass();
 echo $test->testMethod(" method called") . "\n";
 

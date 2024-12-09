@@ -1,0 +1,20 @@
+{
+    "name": "ray-di/ext-rayaop",
+    "description": "Demo code using Ray.Aop",
+    "type": "project",
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "Demo\\": "src"
+        }
+    },
+    "authors": [
+        {
+            "name": "Akihito Koriyama",
+            "email": "akihito.koriyama@gmail.com"
+        }
+    ],
+    "require": {
+        "ray/aop": "^2.17"
+    }
+}

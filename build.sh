@@ -9,7 +9,7 @@ clean() {
 prepare() {
     echo "Preparing..."
     phpize
-    ./configure
+    ./configure CFLAGS="-g -O0"
 }
 
 build() {
@@ -23,8 +23,18 @@ install() {
 }
 
 run() {
-    echo "Run..."
+    echo "Run smoke..."
     php -dextension=modules/rayaop.so -ddisplay_errors=1 smoke.php
+}
+
+demo() {
+    echo "Run demo..."
+    php -dextension=modules/rayaop.so -ddisplay_errors=1 demo/aop.php
+}
+
+debug() {
+    echo "Run demo..."
+    lldb -o run -- php -dextension=modules/rayaop.so -ddisplay_errors=1 Ray.Aop/demo/05-pecl.php
 }
 
 case $1 in
@@ -42,6 +52,12 @@ case $1 in
         ;;
     run)
         run
+        ;;
+    demo)
+        demo
+        ;;
+    debug)
+        debug
         ;;
     all)
         clean
