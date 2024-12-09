@@ -388,10 +388,6 @@ PHP_MINIT_FUNCTION(rayaop) {
         php_error_docref(NULL, E_ERROR, "Failed to allocate mutex for RayAOP");
         return FAILURE;
     }
-    if (!rayaop_mutex) {
-        php_error_docref(NULL, E_ERROR, "Failed to allocate mutex for RayAOP");
-        return FAILURE;
-    }
 #endif
 
     zend_class_entry ce;
