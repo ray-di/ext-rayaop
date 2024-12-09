@@ -106,6 +106,9 @@ PHP_RAYAOP_API char *php_rayaop_generate_key(zend_string *class_name, zend_strin
     }
     char *key;
     int len = spprintf(&key, 0, "%s::%s", ZSTR_VAL(class_name), ZSTR_VAL(method_name));
+    if (len < 0) {
+        return NULL;
+    }
     if (key_len) {
         *key_len = (size_t)len;
     }
