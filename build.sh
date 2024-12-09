@@ -29,7 +29,7 @@ run() {
 
 demo() {
     echo "Run demo..."
-    php -dextension=modules/rayaop.so -ddisplay_errors=1 Ray.Aop/demo/05-pecl.php
+    php -dextension=modules/rayaop.so -ddisplay_errors=1 demo/aop.php
 }
 
 debug() {

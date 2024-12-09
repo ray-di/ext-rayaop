@@ -32,3 +32,6 @@
 /Makefile.objects
 /cmake-build-debug
 /modules/rayaop.so
+
+/vendor/
+/demo/tmp/
