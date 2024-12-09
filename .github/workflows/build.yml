@@ -50,8 +50,17 @@ jobs:
           timeout 60s php -n -dextension=./modules/rayaop.so -dmemory_limit=128M -dreport_memleaks=1 -dzend.assertions=1 -dassert.exception=1 smoke.php
         continue-on-error: true
 
+      # Add demo directory test
+      - name: Test demo directory
+        id: test_demo_dir
+        run: |
+          cd demo
+          composer install
+          php -dextension=../modules/rayaop.so aop.php
+        continue-on-error: true
+
       - name: Run Valgrind memory check
-        if: steps.run_tests.outcome == 'failure' || steps.run_demo.outcome == 'failure'
+        if: steps.run_tests.outcome == 'failure' || steps.run_demo.outcome == 'failure' || steps.test_demo_dir.outcome == 'failure'
         run: |
           cat << EOF > valgrind.supp
           {
@@ -65,27 +74,32 @@ jobs:
           EOF
           valgrind --suppressions=valgrind.supp --leak-check=full --show-leak-kinds=all --track-origins=yes --verbose --log-file=valgrind-out.txt php -n -dextension=./modules/rayaop.so smoke.php
 
-      - name: Check Valgrind results
-        if: steps.run_tests.outcome == 'failure' || steps.run_demo.outcome == 'failure'
-        run: |
-          if [ -f valgrind-out.txt ]; then
-            echo "Valgrind log found:"
-            cat valgrind-out.txt
-            if ! grep -q "ERROR SUMMARY: 0 errors from 0 contexts" valgrind-out.txt; then
-              echo "Valgrind found errors"
-              exit 1
-            fi
-          else
-            echo "Valgrind log not found. This is unexpected."
-            exit 1
-          fi
+          # Also run Valgrind on demo directory
+          cd demo
+          valgrind --suppressions=../valgrind.supp --leak-check=full --show-leak-kinds=all --track-origins=yes --verbose --log-file=valgrind-demo-out.txt php -n -dextension=../modules/rayaop.so aop.php
 
-      - name: Upload Valgrind log file
-        if: (steps.run_tests.outcome == 'failure' || steps.run_demo.outcome == 'failure') && always()
+      - name: Check Valgrind results
+        if: steps.run_tests.outcome == 'failure' || steps.run_demo.outcome == 'failure' || steps.test_demo_dir.outcome == 'failure'
+        run: |
+          for log in valgrind-out.txt demo/valgrind-demo-out.txt; do
+            if [ -f "$log" ]; then
+              echo "Checking Valgrind log: $log"
+              cat "$log"
+              if ! grep -q "ERROR SUMMARY: 0 errors from 0 contexts" "$log"; then
+                echo "Valgrind found errors in $log"
+                exit 1
+              fi
+            fi
+          done
+
+      - name: Upload Valgrind logs
+        if: (steps.run_tests.outcome == 'failure' || steps.run_demo.outcome == 'failure' || steps.test_demo_dir.outcome == 'failure') && always()
         uses: actions/upload-artifact@v4
         with:
-          name: valgrind-log
-          path: valgrind-out.txt
+          name: valgrind-logs
+          path: |
+            valgrind-out.txt
+            demo/valgrind-demo-out.txt
           if-no-files-found: warn
 
       - name: Upload test logs
@@ -96,12 +110,13 @@ jobs:
           path: |
             tests/*.log
             tests/*.sh
+            demo/*.log
           if-no-files-found: warn
 
       - name: Final status check
         if: always()
         run: |
-          if [ "${{ steps.run_tests.outcome }}" == "failure" ] || [ "${{ steps.run_demo.outcome }}" == "failure" ]; then
-            echo "Tests or demo run failed. Please check the logs for more information."
+          if [ "${{ steps.run_tests.outcome }}" == "failure" ] || [ "${{ steps.run_demo.outcome }}" == "failure" ] || [ "${{ steps.test_demo_dir.outcome }}" == "failure" ]; then
+            echo "Tests, demo run, or demo directory test failed. Please check the logs for more information."
             exit 1
           fi
