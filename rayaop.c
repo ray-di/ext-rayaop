@@ -244,7 +244,12 @@ static void rayaop_execute_ex(zend_execute_data *execute_data) {
             }
         }
     } else if (call_result != SUCCESS) {
-        php_rayaop_handle_error(RAYAOP_E_INVALID_HANDLER, "Interceptor call failed");
+        char error_msg[256];
+        snprintf(error_msg, sizeof(error_msg),
+            "Interceptor call failed for %s::%s",
+            ZSTR_VAL(info->class_name),
+            ZSTR_VAL(info->method_name));
+        php_rayaop_handle_error(RAYAOP_E_INVALID_HANDLER, error_msg);
     }
 
 cleanup:
