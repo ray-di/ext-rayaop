@@ -33,5 +33,5 @@
 /cmake-build-debug
 /modules/rayaop.so
 
-/vendor/
+/demo/vendor/
 /demo/tmp/
