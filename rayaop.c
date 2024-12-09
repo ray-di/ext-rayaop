@@ -143,6 +143,11 @@ PHP_RAYAOP_API zend_bool php_rayaop_should_intercept(zend_execute_data *execute_
         return 0;
     }
 
+    /* Ensure we're not trying to intercept internal functions */
+    if (execute_data->func->type == ZEND_INTERNAL_FUNCTION) {
+        return 0;
+    }
+
     if (RAYAOP_G(is_intercepting)) {
         return 0;
     }
